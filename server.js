@@ -22,7 +22,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 // =============== Healthz (no auth) ===============
 app.get('/healthz', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
-// =============== Basic Auth (protects everything except /healthz) ===============
+// =============== Basic Auth (protect everything except /healthz) ===============
 if (process.env.PUBLIC_AUTH_USER && process.env.PUBLIC_AUTH_PASS) {
   app.use((req, res, next) => {
     if (req.path === '/healthz') return next();
@@ -44,7 +44,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
-// =============== Data dir (for quick local JSON) ===============
+// =============== Data dir ===============
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const pjoin = (...a) => path.join(DATA_DIR, ...a);
@@ -75,69 +75,67 @@ function listDates(fromISO, toISO){
   return out;
 }
 
-// =============== Google Sheets (write + read) ===============
-let gSheetsEnabled = String(process.env.SHEETS_ENABLED || '').toLowerCase() === 'true';
-let spreadsheetId  = process.env.SHEETS_SPREADSHEET_ID || '';
-let sheetsClient   = null;
+// =============== Google Sheets helpers ===============
+const SHEETS_ENABLED = String(process.env.SHEETS_ENABLED || '').toLowerCase() === 'true';
+const SHEET_ID = process.env.SHEETS_SPREADSHEET_ID || '';
+const KEY_FILE = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/secrets/google.json';
 
-async function initSheets(){
-  if (!gSheetsEnabled) return console.log('Sheets: disabled');
-  if (!spreadsheetId) { gSheetsEnabled = false; return console.warn('Sheets: missing SHEETS_SPREADSHEET_ID'); }
-  try {
-    const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/secrets/google.json';
-    const auth = new google.auth.GoogleAuth({
-      keyFile,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    const client = await auth.getClient();
-    sheetsClient = google.sheets({ version: 'v4', auth: client });
-    console.log('Sheets: initialized');
-  } catch (e) {
-    gSheetsEnabled = false;
-    console.error('Sheets init error:', e.message);
-  }
+async function getSheetsClient(scopeWrite = false){
+  if (!SHEETS_ENABLED || !SHEET_ID) return null;
+  const scopes = scopeWrite
+    ? ['https://www.googleapis.com/auth/spreadsheets']
+    : ['https://www.googleapis.com/auth/spreadsheets.readonly'];
+  const auth = new google.auth.GoogleAuth({ keyFile: KEY_FILE, scopes });
+  const client = await auth.getClient();
+  return google.sheets({ version: 'v4', auth: client });
 }
-initSheets().catch(()=>{});
 
-async function ensureHeader(sheet, header){
-  if (!gSheetsEnabled || !sheetsClient) return;
+async function ensureHeader(tab, header){
   try {
-    const r = await sheetsClient.spreadsheets.values.get({ spreadsheetId, range: `${sheet}!A1:Z1` });
+    const sheets = await getSheetsClient(true);
+    if (!sheets) return;
+    const r = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `${tab}!A1:Z1` });
     const values = r.data.values || [];
     if (!values.length || !values[0] || values[0].join('').trim() === '') {
-      await sheetsClient.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheet}!A1:${String.fromCharCode(64 + header.length)}1`,
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${tab}!A1:${String.fromCharCode(64 + header.length)}1`,
         valueInputOption: 'RAW',
         requestBody: { values: [header] },
       });
-      console.log(`Sheets: header written for ${sheet}`);
     }
-  } catch (_) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
-async function appendRow(sheet, header, rowValues){
-  if (!gSheetsEnabled || !sheetsClient) return;
+async function appendRow(tab, header, rowValues){
   try {
-    await ensureHeader(sheet, header);
-    await sheetsClient.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheet}!A:Z`,
+    if (!SHEETS_ENABLED || !SHEET_ID) return;
+    const sheets = await getSheetsClient(true);
+    if (!sheets) return;
+    await ensureHeader(tab, header);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: `${tab}!A:Z`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [rowValues] },
     });
   } catch (e) {
-    console.error(`Sheets append error (${sheet}):`, e.message);
+    console.error(`Sheets append error (${tab}):`, e.message);
   }
 }
 
-// Test read endpoint
+// =============== Endpoint للقراءة من الشيت (Test) ===============
 app.get('/api/sheet', async (req, res) => {
   try {
-    if (!gSheetsEnabled) return res.status(500).json({ ok:false, error:'Sheets disabled' });
+    if (!SHEETS_ENABLED) return res.status(500).json({ ok:false, error:'Sheets disabled' });
+    if (!SHEET_ID)       return res.status(500).json({ ok:false, error:'Missing SHEETS_SPREADSHEET_ID' });
+
     const tab = req.query.tab || 'Sales';
-    const range = `${tab}!A1:G50`;
-    const resp = await sheetsClient.spreadsheets.values.get({ spreadsheetId, range });
+    const sheets = await getSheetsClient(false);
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `${tab}!A1:G50`,
+    });
     const values = resp.data.values || [];
     res.json({ ok:true, rows: values.length, data: values });
   } catch (e) {
@@ -428,6 +426,10 @@ watcher.on('all', (_, filePath) => {
   } catch(e){ console.error('watcher error', e); }
 });
 io.on('connection', () => console.log('Realtime client connected'));
+
+// (اختياري) منع الكراش لو حصل Errors غير ملتقطة:
+process.on('unhandledRejection', err => console.error('UNHANDLED REJECTION:', err));
+process.on('uncaughtException', err => console.error('UNCAUGHT EXCEPTION:', err));
 
 // =============== Start ===============
 const PORT = parseInt(process.env.PORT || '3000', 10);
