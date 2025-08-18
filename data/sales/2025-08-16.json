@@ -1,0 +1,57 @@
+[
+  {
+    "amount": 500,
+    "method": "Cash",
+    "date": "2025-08-16T02:17:30.306Z"
+  },
+  {
+    "amount": 200,
+    "method": "Cash",
+    "date": "2025-08-16T02:17:37.116Z"
+  },
+  {
+    "amount": 100,
+    "method": "Cash",
+    "date": "2025-08-16T02:17:46.601Z"
+  },
+  {
+    "amount": 200,
+    "method": "Mobile Number",
+    "date": "2025-08-16T02:18:27.093Z"
+  },
+  {
+    "amount": 500,
+    "method": "Cash",
+    "date": "2025-08-16T02:19:07.620Z"
+  },
+  {
+    "amount": 200,
+    "method": "Cash",
+    "date": "2025-08-16T02:19:43.385Z"
+  },
+  {
+    "amount": 50,
+    "method": "Cash",
+    "date": "2025-08-16T02:19:47.047Z"
+  },
+  {
+    "amount": 200,
+    "method": "Cash",
+    "date": "2025-08-16T02:20:35.027Z"
+  },
+  {
+    "amount": 700,
+    "method": "Cash",
+    "date": "2025-08-16T02:23:21.162Z"
+  },
+  {
+    "amount": 200,
+    "method": "Cash",
+    "date": "2025-08-16T02:36:14.456Z"
+  },
+  {
+    "amount": 5000,
+    "method": "Cash",
+    "date": "2025-08-16T02:36:21.071Z"
+  }
+]

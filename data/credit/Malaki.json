@@ -1,0 +1,14 @@
+[
+  {
+    "type": "purchase",
+    "amount": 3100,
+    "note": "2 kg kunafa dough .. 2 kg rosted kunafa ",
+    "date": "2025-08-17"
+  },
+  {
+    "type": "payment",
+    "amount": 3100,
+    "method": "Cash",
+    "date": "2025-08-17T09:28:18.214Z"
+  }
+]

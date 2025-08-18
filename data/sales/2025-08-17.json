@@ -1,0 +1,57 @@
+[
+  {
+    "amount": 515,
+    "method": "Cash",
+    "date": "2025-08-17T07:43:12.175Z"
+  },
+  {
+    "amount": 1220,
+    "method": "Withdraw Cash",
+    "date": "2025-08-17T07:54:01.779Z"
+  },
+  {
+    "amount": 1200,
+    "method": "Cash",
+    "date": "2025-08-17T08:03:03.005Z"
+  },
+  {
+    "amount": 1500,
+    "method": "Cash",
+    "date": "2025-08-17T08:03:15.460Z"
+  },
+  {
+    "amount": 900,
+    "method": "Cash",
+    "date": "2025-08-17T08:47:40.015Z"
+  },
+  {
+    "amount": 250,
+    "method": "Buy Goods",
+    "date": "2025-08-17T09:26:08.271Z"
+  },
+  {
+    "amount": 500,
+    "method": "Buy Goods",
+    "date": "2025-08-17T09:36:18.559Z"
+  },
+  {
+    "amount": 750,
+    "method": "Cash",
+    "date": "2025-08-17T11:08:23.350Z"
+  },
+  {
+    "amount": 1000,
+    "method": "Buy Goods",
+    "date": "2025-08-17T11:20:52.267Z"
+  },
+  {
+    "amount": 5050,
+    "method": "Mobile Number",
+    "date": "2025-08-17T12:15:10.734Z"
+  },
+  {
+    "amount": 330,
+    "method": "Cash",
+    "date": "2025-08-17T15:54:10.336Z"
+  }
+]
