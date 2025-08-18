@@ -3,23 +3,26 @@
 
 require('dotenv').config();
 
-const express   = require('express');
-const path      = require('path');
-const fs        = require('fs');
-const os        = require('os');
-const http      = require('http');
-const { Server }= require('socket.io');
-const chokidar  = require('chokidar');
-const ExcelJS   = require('exceljs');
+const express     = require('express');
+const path        = require('path');
+const fs          = require('fs');
+const os          = require('os');
+const http        = require('http');
+const { Server }  = require('socket.io');
+const chokidar    = require('chokidar');
+const ExcelJS     = require('exceljs');
 const PDFDocument = require('pdfkit');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
 
-// ===== Basic Auth (يحمي كل الطلبات لو متضبط في .env) =====
+// ========= Health (unprotected) =========
+app.get('/healthz', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+
+// ========= Basic Auth (يحمي كل الطلبات لو متضبط في .env) =========
+// استثناء /healthz علشان Render يقدر يفحص الصحة بسهولة
 if (process.env.PUBLIC_AUTH_USER && process.env.PUBLIC_AUTH_PASS) {
   app.use((req, res, next) => {
+    if (req.path === '/healthz') return next();
     const auth = req.headers.authorization || '';
     const [type, b64] = auth.split(' ');
     if (type === 'Basic' && b64) {
@@ -31,22 +34,25 @@ if (process.env.PUBLIC_AUTH_USER && process.env.PUBLIC_AUTH_PASS) {
   });
 }
 
-// ===== Parsers =====
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ===== Static =====
+// ========= Static =========
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
-// ===== Data dir =====
+// ========= HTTP + Socket.IO =========
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+
+// ========= Data dir =========
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR)
                                       : path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const p = (...a) => path.join(DATA_DIR, ...a);
 ['', 'sales', 'expenses', 'cash', 'credit', 'exports'].forEach(d => fs.mkdirSync(p(d), { recursive: true }));
 
-// ===== Helpers =====
+// ========= Helpers =========
 const today = () => new Date().toISOString().slice(0,10);
 const toDay = (d) => (d || today());
 const readJSON = (file, fallback = []) => { try { return JSON.parse(fs.readFileSync(file, 'utf8') || '[]'); } catch { return fallback; } };
@@ -58,13 +64,13 @@ const getLocalIP = () => {
   return null;
 };
 
-// ===== Seed credit customers (one-time) =====
+// ========= Seed credit customers (one-time) =========
 const CUST_FILE = p('credit', '_customers.json');
 if (!fs.existsSync(CUST_FILE)) {
   writeJSON(CUST_FILE, ["Bakkal","Habib","Snack attack","Azza","Freez","Malaki"]);
 }
 
-// ===== SALES =====
+// ========= SALES =========
 app.post('/api/sales', (req, res) => {
   const { amount, method, note, date } = req.body || {};
   if (amount == null) return res.status(400).send('amount required');
@@ -94,7 +100,7 @@ app.get('/api/sales', (req, res) => {
   res.json(readJSON(p('sales', `${d}.json`)));
 });
 
-// ===== Sales search (range + method + min/max + q) =====
+// ========= Sales search (range + method + min/max + q) =========
 function listDates(fromISO, toISO){
   const out = [];
   const from = new Date(fromISO);
@@ -131,7 +137,7 @@ app.get('/api/sales/search', (req, res) => {
   res.json({ rows, total, count: rows.length, from:F, to:T });
 });
 
-// ===== EXPENSES =====
+// ========= EXPENSES =========
 app.post('/api/expenses', (req, res) => {
   const { amount, category, method, note, date } = req.body || {};
   if (amount == null) return res.status(400).send('amount required');
@@ -147,7 +153,7 @@ app.get('/api/expenses', (req, res) => {
   res.json(readJSON(p('expenses', `${d}.json`)));
 });
 
-// ===== CASH (denominations) =====
+// ========= CASH (denominations) =========
 app.post('/api/cash', (req, res) => {
   const { shift, denominations, note, date } = req.body || {};
   const d = toDay(date);
@@ -164,7 +170,7 @@ app.get('/api/cash', (req, res) => {
   res.json(readJSON(p('cash', `${d}.json`)));
 });
 
-// ===== CREDIT (customers + ledger) =====
+// ========= CREDIT (customers + ledger) =========
 const creditFile = (customer) => p('credit', `${customer}.json`);
 
 app.get('/api/credit/customers', (req, res) => res.json(readJSON(CUST_FILE, [])));
@@ -210,7 +216,7 @@ app.get('/api/credit/summary', (req, res) => {
   res.json(out);
 });
 
-// ===== Reports =====
+// ========= Reports =========
 app.get('/api/reports/daily', (req, res) => {
   const d = toDay(req.query.date);
   const sales = readJSON(p('sales', `${d}.json`));
@@ -234,7 +240,7 @@ app.get('/api/reports/last7', (req, res) => {
   res.json(results);
 });
 
-// ===== Export CSV (day) =====
+// ========= Export CSV (day) =========
 function sendCSV(res, filename, header, rows) {
   const csv = [header.join(','), ...rows.map(r => header.map(h => (r[h] ?? '')).join(','))].join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -257,7 +263,7 @@ app.get('/api/export/csv/cash', (req, res) => {
   sendCSV(res, `cash-${d}.csv`, ['date','shift','total','note','denominations'], rows);
 });
 
-// ===== Export CSV (filtered sales for range) =====
+// ========= Export CSV (filtered sales for range) =========
 app.get('/api/export/csv/sales-filter', (req, res) => {
   const { from, to, method, min, max, q } = req.query;
   const F = from || to || today();
@@ -280,7 +286,7 @@ app.get('/api/export/csv/sales-filter', (req, res) => {
   sendCSV(res, `sales-${F}_to_${T}.csv`, ['date','amount','method','note'], shaped);
 });
 
-// ===== XLSX & PDF (daily) =====
+// ========= XLSX & PDF (daily) =========
 async function fetchDaily(d){
   const sales = readJSON(p('sales', `${d}.json`));
   const expenses = readJSON(p('expenses', `${d}.json`));
@@ -337,15 +343,15 @@ app.get('/api/export/pdf/daily', async (req, res) => {
   });
 });
 
-// ===== Meta (LAN/QR) =====
+// ========= Meta (LAN) =========
 app.get('/api/meta/lan', (req, res) => {
-  const envPort = process.env.PORT || '80';
+  const envPort = process.env.PORT || '3000';
   const portNum = parseInt(envPort, 10);
   const ip = getLocalIP() || 'localhost';
   res.json({ ip, port: portNum, url:`http://${ip}:${portNum}` });
 });
 
-// ===== Realtime (file watcher) =====
+// ========= Realtime (file watcher) =========
 const watcher = chokidar.watch([p('sales'), p('expenses'), p('cash'), p('credit')], { ignoreInitial:true, depth:3 });
 watcher.on('all', (_, filePath) => {
   try {
@@ -356,11 +362,11 @@ watcher.on('all', (_, filePath) => {
 });
 io.on('connection', () => console.log('Realtime client connected'));
 
-// ===== Start =====
-const port = parseInt(process.env.PORT || '80', 10);
-const host = process.env.HOST || '0.0.0.0';
-server.listen(port, host, () => {
+// ========= Start =========
+const PORT = parseInt(process.env.PORT || '3000', 10);
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
   const ip = getLocalIP();
-  console.log(`Server running on http://localhost:${port}`);
-  if (ip) console.log(`LAN:   http://${ip}:${port}`);
+  console.log(`Server running on http://localhost:${PORT}`);
+  if (ip) console.log(`LAN:   http://${ip}:${PORT}`);
 });
