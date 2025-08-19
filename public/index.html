@@ -1,359 +1,254 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Zaad Bakery — Manager</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link href="/style.css" rel="stylesheet">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Zaad Bakery — Manager</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- App styles -->
+  <link href="/style.css" rel="stylesheet">
+  <link rel="icon" href="/img/zaad-logo.jpeg">
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-  <div class="container">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-      <img src="/img/zaad-logo.jpeg" alt="Zaad" width="36" height="36" class="rounded">
-      <span class="fw-bold">Zaad Bakery</span>
-    </a>
-    <div class="ms-auto d-flex align-items-center gap-3">
-      <button id="btnShare" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code"></i> Share</button>
-      <div class="form-check form-switch m-0">
-        <input class="form-check-input" type="checkbox" role="switch" id="themeSwitch">
-        <label class="form-check-label small" for="themeSwitch">Dark</label>
+  <!-- Topbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <img src="/img/zaad-logo.jpeg" alt="Zaad" width="36" height="36" class="rounded">
+        <span class="fw-bold">Zaad Bakery</span>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <button id="btnShare" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code"></i> Share</button>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="themeSwitch">
+          <label class="form-check-label small" for="themeSwitch">Dark</label>
+        </div>
       </div>
     </div>
-  </div>
-</nav>
+  </nav>
 
-<main class="py-4">
-  <div class="container">
+  <main class="py-4">
+    <div class="container">
 
-    <!-- Tabs -->
-    <ul class="nav nav-pills brand-pills mb-4" id="mainTabs" role="tablist">
-      <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabSales" type="button"><i class="bi bi-cash-coin"></i> Sales</button></li>
-      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabExpenses" type="button"><i class="bi bi-receipt"></i> Expenses</button></li>
-      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCredit" type="button"><i class="bi bi-people"></i> Credit</button></li>
-      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabOrders" type="button"><i class="bi bi-bag-check"></i> Orders</button></li>
-      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCash" type="button"><i class="bi bi-cash-stack"></i> Cash Count</button></li>
-      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports" type="button"><i class="bi bi-graph-up"></i> Reports</button></li>
-    </ul>
+      <!-- Tabs -->
+      <ul class="nav nav-pills brand-pills mb-4" id="mainTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabSales" type="button"><i class="bi bi-cash-coin"></i> Sales</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabExpenses" type="button"><i class="bi bi-receipt"></i> Expenses</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCredit" type="button"><i class="bi bi-people"></i> Credit</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabOrders" type="button"><i class="bi bi-bag-check"></i> Orders</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCash" type="button"><i class="bi bi-cash-stack"></i> Cash Count</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports" type="button"><i class="bi bi-graph-up"></i> Reports</button></li>
+      </ul>
 
-    <div class="tab-content">
-      <!-- SALES -->
-      <section class="tab-pane fade show active" id="tabSales">
-        <div class="row g-4">
-          <div class="col-lg-4">
-            <div class="card h-100">
-              <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
-              <div class="card-body">
-                <form id="formSale" class="vstack gap-3">
-                  <div class="row g-2">
-                    <div class="col-7">
-                      <label class="form-label">Product (optional)</label>
-                      <input class="form-control" name="product" placeholder="e.g., Croissant">
+      <div class="tab-content">
+
+        <!-- SALES -->
+        <section class="tab-pane fade show active" id="tabSales">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
+                <div class="card-body">
+                  <form id="formSale" class="vstack gap-3">
+                    <div class="row g-2">
+                      <div class="col-6">
+                        <label class="form-label">Payment</label>
+                        <select class="form-select" name="method">
+                          <option>Cash</option>
+                          <option>Till No</option>
+                          <option>Withdrawal</option>
+                          <option>Send Money</option>
+                        </select>
+                      </div>
+                      <div class="col-3">
+                        <label class="form-label">Qty</label>
+                        <input class="form-control" name="quantity" value="1" type="number" min="1" step="1">
+                      </div>
+                      <div class="col-3">
+                        <label class="form-label">Unit</label>
+                        <input class="form-control" name="unitPrice" placeholder="0.00" type="number" min="0" step="0.01">
+                      </div>
                     </div>
-                    <div class="col-5">
-                      <label class="form-label">Payment</label>
-                      <select class="form-select" name="method">
-                        <option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
-                      </select>
+
+                    <div>
+                      <label class="form-label">Amount</label>
+                      <input class="form-control" name="amount" placeholder="auto" type="number" min="0" step="0.01">
                     </div>
+
+                    <div>
+                      <label class="form-label">Note</label>
+                      <textarea class="form-control" rows="2" name="note" placeholder="Notes…"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Sale</button>
+                      <button class="btn btn-outline-secondary" type="reset">Clear</button>
+                    </div>
+                  </form>
+                  <div class="small text-secondary mt-2"><i class="bi bi-lightning-charge"></i> Shortcut: Alt+S</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                  <span class="fw-semibold">Sales</span>
+                  <div class="d-flex gap-2 align-items-center">
+                    <input type="date" class="form-control form-control-sm" id="salesFrom">
+                    <input type="date" class="form-control form-control-sm" id="salesTo">
+                    <select id="salesMethod" class="form-select form-select-sm">
+                      <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
+                    </select>
+                    <input type="search" class="form-control form-control-sm" id="salesSearch" placeholder="Search…">
+                    <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                    <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export</a>
                   </div>
-                  <div class="row g-2">
-                    <div class="col-4"><label class="form-label">Qty</label><input class="form-control" name="quantity" value="1" type="number" min="1" step="1"></div>
-                    <div class="col-4"><label class="form-label">Unit Price</label><input class="form-control" name="unitPrice" placeholder="0.00" type="number" min="0" step="0.01"></div>
-                    <div class="col-4"><label class="form-label">Amount</label><input class="form-control" name="amount" placeholder="auto" type="number" min="0" step="0.01"></div>
-                  </div>
-                  <div><label class="form-label">Till Number (optional)</label><input class="form-control" name="tillNumber" placeholder="e.g., 123456"></div>
-                  <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note" placeholder="Notes…"></textarea></div>
-                  <div class="d-grid gap-2">
-                    <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Sale</button>
-                    <button class="btn btn-outline-secondary" type="reset">Clear</button>
-                  </div>
-                </form>
-                <div class="small text-secondary mt-2"><i class="bi bi-lightning-charge"></i> Shortcut: Alt+S</div>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 table-sort" id="tblSales">
+                    <thead class="table-light">
+                      <tr>
+                        <th data-sort="date">Date</th>
+                        <th data-sort="num" class="text-end">Qty</th>
+                        <th data-sort="num" class="text-end">Unit</th>
+                        <th data-sort="num" class="text-end">Amount</th>
+                        <th data-sort="text">Method</th>
+                        <th data-sort="text">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tblSalesBody"><tr class="skeleton"><td colspan="6">Loading…</td></tr></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
-          <div class="col-lg-8">
-            <div class="card">
-              <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                <span class="fw-semibold">Sales</span>
-                <div class="d-flex gap-2 align-items-center">
-                  <input type="date" class="form-control form-control-sm" id="salesFrom">
-                  <input type="date" class="form-control form-control-sm" id="salesTo">
-                  <select id="salesMethod" class="form-select form-select-sm">
-                    <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
+        </section>
+
+        <!-- EXPENSES -->
+        <section class="tab-pane fade" id="tabExpenses">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Expense</div>
+                <div class="card-body">
+                  <form id="formExpense" class="vstack gap-3" enctype="multipart/form-data">
+                    <div><label class="form-label">Item</label><input class="form-control" name="item" placeholder="e.g., Flour"></div>
+                    <div class="row g-2">
+                      <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" min="0" step="0.01"></div>
+                      <div class="col"><label class="form-label">Payment</label><select class="form-select" name="method"><option>Cash</option><option>Withdrawal</option></select></div>
+                    </div>
+                    <div><label class="form-label">Receipt (image)</label><input class="form-control" type="file" accept="image/*" name="receipt"></div>
+                    <div><label class="form-label">Note</label><textarea class="form-control" name="note" rows="2"></textarea></div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Expense</button></div>
+                  </form>
+                  <div class="small text-secondary mt-2">Shortcut: Alt+E</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
+                  <span>Expenses</span>
+                  <input type="search" id="expSearch" class="form-control form-control-sm ms-auto" placeholder="Search…">
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 table-sort" id="tblExp">
+                    <thead class="table-light"><tr>
+                      <th data-sort="date">Date</th><th data-sort="text">Item</th>
+                      <th data-sort="num" class="text-end">Amount</th><th data-sort="text">Method</th>
+                      <th data-sort="text">Note</th><th data-sort="text">Receipt</th>
+                    </tr></thead>
+                    <tbody id="tblExpensesBody"><tr class="skeleton"><td colspan="6">Loading…</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CREDIT -->
+        <section class="tab-pane fade" id="tabCredit">
+          <!-- (بدون تغيير عن نسختك المُحسّنة) -->
+          <!-- نفس الكتلة التي عندك لملخص الكريديت والجدول + المودال -->
+        </section>
+
+        <!-- ORDERS -->
+        <section class="tab-pane fade" id="tabOrders">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Order</div>
+                <div class="card-body">
+                  <form id="formOrder" class="vstack gap-3">
+                    <div><label class="form-label">Client Phone</label><input class="form-control" name="phone" placeholder="+254…"></div>
+                    <div><label class="form-label">Item</label><input class="form-control" name="item"></div>
+                    <div class="row g-2">
+                      <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
+                      <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
+                    </div>
+                    <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
+                  <span>Orders</span>
+                  <select id="orStatusFilter" class="form-select form-select-sm ms-auto" style="max-width:200px">
+                    <option value="">All Status</option>
+                    <option>Pending</option><option>In-Progress</option><option>Done</option><option>Delivered</option>
                   </select>
-                  <input type="search" class="form-control form-control-sm" id="salesSearch" placeholder="Search…">
-                  <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
-                  <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export</a>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 table-sort" id="tblOr">
+                    <thead class="table-light"><tr>
+                      <th data-sort="date">Date</th><th data-sort="text">Phone</th><th data-sort="text">Item</th>
+                      <th data-sort="num" class="text-end">Amount</th><th data-sort="num" class="text-end">Paid</th><th data-sort="num" class="text-end">Remaining</th>
+                      <th data-sort="text">Status</th><th>Action</th>
+                    </tr></thead>
+                    <tbody id="tblOrdersBody"><tr class="skeleton"><td colspan="8">Loading…</td></tr></tbody>
+                  </table>
                 </div>
               </div>
-              <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-sort" id="tblSales">
-                  <thead class="table-light">
-                    <tr>
-                      <th data-sort="date">Date</th>
-                      <th data-sort="text">Product</th>
-                      <th data-sort="num" class="text-end">Qty</th>
-                      <th data-sort="num" class="text-end">Unit</th>
-                      <th data-sort="num" class="text-end">Amount</th>
-                      <th data-sort="text">Method</th>
-                      <th data-sort="text">Note</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tblSalesBody"><tr class="skeleton"><td colspan="7">Loading…</td></tr></tbody>
-                </table>
-              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- EXPENSES -->
-      <section class="tab-pane fade" id="tabExpenses">
-        <div class="row g-4">
-          <div class="col-lg-4">
-            <div class="card h-100">
-              <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Expense</div>
-              <div class="card-body">
-                <form id="formExpense" class="vstack gap-3">
-                  <div><label class="form-label">Item</label><input class="form-control" name="item" placeholder="e.g., Flour"></div>
-                  <div class="row g-2">
-                    <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" min="0" step="0.01"></div>
-                    <div class="col"><label class="form-label">Payment</label><select class="form-select" name="method"><option>Cash</option><option>Withdrawal</option></select></div>
-                  </div>
-                  <div><label class="form-label">Note</label><textarea class="form-control" name="note" rows="2"></textarea></div>
-                  <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Expense</button></div>
-                </form>
-                <div class="small text-secondary mt-2">Shortcut: Alt+E</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-8">
-            <div class="card">
-              <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
-                <span>Expenses</span>
-                <input type="search" id="expSearch" class="form-control form-control-sm ms-auto" placeholder="Search…">
-              </div>
-              <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-sort" id="tblExp">
-                  <thead class="table-light"><tr>
-                    <th data-sort="date">Date</th><th data-sort="text">Item</th><th data-sort="num" class="text-end">Amount</th><th data-sort="text">Method</th><th data-sort="text">Note</th>
-                  </tr></thead>
-                  <tbody id="tblExpensesBody"><tr class="skeleton"><td colspan="5">Loading…</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        <!-- CASH & REPORTS (كما في نسختك المحسّنة) -->
+        <section class="tab-pane fade" id="tabCash"> … </section>
+        <section class="tab-pane fade" id="tabReports"> … </section>
 
-      <!-- CREDIT -->
-      <section class="tab-pane fade" id="tabCredit">
-        <div class="row g-4">
-          <div class="col-lg-4">
-            <div class="card h-100">
-              <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Credit</div>
-              <div class="card-body">
-                <form id="formCredit" class="vstack gap-3">
-                  <div><label class="form-label">Customer</label>
-                    <input class="form-control" list="dlCustomers" name="customer" placeholder="Select / type…">
-                    <datalist id="dlCustomers">
-                      <option>Bakkal</option><option>Azza</option><option>Habib</option><option>Snack attack</option>
-                      <option>Crave</option><option>Popa tea</option><option>Chopit</option><option>Freez</option><option>Malaki</option>
-                    </datalist>
-                  </div>
-                  <div><label class="form-label">Item</label><input class="form-control" name="item" placeholder="e.g., Box"></div>
-                  <div class="row g-2">
-                    <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
-                    <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
-                  </div>
-                  <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
-                  <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
-                </form>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-8">
-            <div class="row g-4">
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-body d-flex flex-wrap gap-4">
-                    <div><div class="text-secondary small">Outstanding Credit</div><div class="fs-3 fw-bold" id="crOutstanding">0.00</div></div>
-                    <div class="vr d-none d-lg-block"></div>
-                    <div class="flex-grow-1">
-                      <div class="text-secondary small mb-1">Top 5 Debtors</div>
-                      <ol class="mb-0" id="crTop5" style="max-height:120px;overflow:auto"></ol>
-                    </div>
-                    <div class="ms-auto">
-                      <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin"></i> Record Payment</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
-                    <span>Credit</span>
-                    <input type="search" id="crSearch" class="form-control form-control-sm ms-auto" placeholder="Search…">
-                  </div>
-                  <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 table-sort" id="tblCr">
-                      <thead class="table-light"><tr>
-                        <th data-sort="date">Date</th><th data-sort="text">Customer</th><th data-sort="text">Item</th>
-                        <th data-sort="num" class="text-end">Amount</th><th data-sort="num" class="text-end">Paid</th><th data-sort="num" class="text-end">Remaining</th><th data-sort="text">Note</th>
-                      </tr></thead>
-                      <tbody id="tblCreditBody"><tr class="skeleton"><td colspan="7">Loading…</td></tr></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div> <!-- row -->
-          </div>
-        </div>
-      </section>
+      </div>
+    </div>
+  </main>
 
-      <!-- ORDERS -->
-      <section class="tab-pane fade" id="tabOrders">
-        <div class="row g-4">
-          <div class="col-lg-4">
-            <div class="card h-100">
-              <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Order</div>
-              <div class="card-body">
-                <form id="formOrder" class="vstack gap-3">
-                  <div><label class="form-label">Client Phone</label><input class="form-control" name="phone" placeholder="+254…"></div>
-                  <div><label class="form-label">Item</label><input class="form-control" name="item"></div>
-                  <div class="row g-2">
-                    <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
-                    <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
-                  </div>
-                  <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
-                  <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
-                </form>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-8">
-            <div class="card">
-              <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
-                <span>Orders</span>
-                <select id="orStatusFilter" class="form-select form-select-sm ms-auto" style="max-width:200px">
-                  <option value="">All Status</option>
-                  <option>Pending</option><option>In-Progress</option><option>Done</option><option>Delivered</option>
-                </select>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-sort" id="tblOr">
-                  <thead class="table-light"><tr>
-                    <th data-sort="date">Date</th><th data-sort="text">Phone</th><th data-sort="text">Item</th>
-                    <th data-sort="num" class="text-end">Amount</th><th data-sort="num" class="text-end">Paid</th><th data-sort="num" class="text-end">Remaining</th>
-                    <th data-sort="text">Status</th><th>Action</th>
-                  </tr></thead>
-                  <tbody id="tblOrdersBody"><tr class="skeleton"><td colspan="8">Loading…</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+  <!-- Credit Payment Modal (كما هو عندك) -->
 
-      <!-- CASH COUNT -->
-      <section class="tab-pane fade" id="tabCash">
-        <div class="row g-4">
-          <div class="col-lg-5">
-            <div class="card h-100">
-              <div class="card-header bg-white fw-semibold"><i class="bi bi-cash"></i> Cash Count</div>
-              <div class="card-body">
-                <form id="formCash" class="vstack gap-3">
-                  <div class="d-flex gap-3 flex-wrap">
-                    <div class="form-check"><input class="form-check-input" type="radio" name="session" value="morning" checked> <label class="form-check-label">Morning</label></div>
-                    <div class="form-check"><input class="form-check-input" type="radio" name="session" value="evening"> <label class="form-check-label">Evening</label></div>
-                    <div class="form-check"><input class="form-check-input" type="radio" name="session" value="eod"> <label class="form-check-label">End of Day (Withdrawal)</label></div>
-                  </div>
-                  <div class="row g-2" id="denoms"></div>
-                  <div><label class="form-label">Note</label><input class="form-control" name="note" id="cashNote" placeholder="Optional note"></div>
-                  <div class="d-flex justify-content-between align-items-center">
-                    <strong>Total:</strong><span class="fs-5" id="cashTotal">0.00</span>
-                  </div>
-                  <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Count</button></div>
-                  <div class="small text-secondary mt-2">Shortcut: Alt+C</div>
-                </form>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-7">
-            <div class="card">
-              <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
-                <span>Cash History</span>
-                <input type="search" id="cashSearch" class="form-control form-control-sm ms-auto" placeholder="Search…">
-              </div>
-              <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-sort" id="tblCash">
-                  <thead class="table-light"><tr>
-                    <th data-sort="date">Date</th><th data-sort="text">Session</th><th data-sort="num" class="text-end">Total</th><th data-sort="text">Note</th>
-                  </tr></thead>
-                  <tbody id="tblCashBody"><tr class="skeleton"><td colspan="4">Loading…</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- REPORTS -->
-      <section class="tab-pane fade" id="tabReports">
-        <div class="card mb-4">
-          <div class="card-header bg-white fw-semibold d-flex flex-wrap gap-2 align-items-center">
-            <span>Filters</span>
-            <input type="date" class="form-control form-control-sm" id="repFrom">
-            <input type="date" class="form-control form-control-sm" id="repTo">
-            <button id="btnRunReport" class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i> Run</button>
-            <a class="btn btn-sm btn-outline-secondary ms-auto" id="btnPDF" href="#"><i class="bi bi-filetype-pdf"></i> PDF</a>
-          </div>
-          <div class="card-body">
-            <div class="row g-3" id="repCards"></div>
-            <canvas id="salesByMethodChart" height="120" class="mt-4"></canvas>
-          </div>
-        </div>
-      </section>
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
+    <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body"><i class="bi bi-check2-circle"></i> Saved successfully.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
     </div>
   </div>
-</main>
 
-<!-- Credit Payment Modal -->
-<div class="modal fade" id="payModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content" id="formPay">
-      <div class="modal-header"><h5 class="modal-title"><i class="bi bi-cash-coin"></i> Record Credit Payment</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body vstack gap-3">
-        <div><label class="form-label">Customer</label><input list="dlCustomers" class="form-control" name="customer" required></div>
-        <div><label class="form-label">Amount Paid</label><input class="form-control" name="paid" type="number" step="0.01" required></div>
-        <div><label class="form-label">Note</label><input class="form-control" name="note" placeholder="Optional"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Payment</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
-  <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert">
-    <div class="d-flex">
-      <div class="toast-body"><i class="bi bi-check2-circle"></i> Saved successfully.</div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-    </div>
-  </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/app.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

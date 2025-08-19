@@ -2,17 +2,20 @@
   "name": "zaad-bakery",
   "version": "1.0.0",
   "main": "server.js",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5",
     "chokidar": "^3.6.0",
-    "xlsx": "^0.18.5",
-    "pdfkit": "^0.15.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "cors": "^2.8.5"
+    "express": "^4.19.2",
+    "multer": "^2.0.2",
+    "pdfkit": "^0.15.0",
+    "socket.io": "^4.7.5",
+    "xlsx": "^0.18.5"
   }
 }

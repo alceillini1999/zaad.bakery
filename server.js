@@ -1,11 +1,11 @@
-// server.js — Zaad Bakery (Render-ready, Pro)
-// Features: IDs, Credit Payments, Order Status, CSV+PDF export, EOD cash, BasicAuth
+// server.js — Zaad Bakery (Render-ready, Pro + receipts upload)
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const http = require('http');
 const cors = require('cors');
+const multer = require('multer');             // NEW (for expense receipt)
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +16,7 @@ const io = require('socket.io')(server, { cors: { origin: '*' } });
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 const DATA_DIR = path.join(__dirname, 'data');
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const FILES = {
   sales: path.join(DATA_DIR, 'sales.jsonl'),
   expenses: path.join(DATA_DIR, 'expenses.jsonl'),
@@ -28,10 +29,9 @@ const FILES = {
 
 // ---------- Helpers ----------
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  for (const p of Object.values(FILES)) {
-    if (!fs.existsSync(p)) fs.writeFileSync(p, '');
-  }
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  for (const p of Object.values(FILES)) if (!fs.existsSync(p)) fs.writeFileSync(p, '');
 }
 function todayISO(d = new Date()) { return new Date(d).toISOString().slice(0,10); }
 function parseToISO(input) {
@@ -46,7 +46,7 @@ function newId(){ return (Date.now().toString(36) + Math.random().toString(36).s
 
 async function appendRecord(type, obj) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
-  const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
+  await fsp.appendFile(file, JSON.stringify(obj) + '\n', 'utf8');
 }
 async function readAll(type) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
@@ -97,6 +97,8 @@ app.use(basicAuth);
 app.use(express.static(path.join(__dirname, 'public'),{
   etag:false,lastModified:false,setHeaders:(res,fp)=>{ if (fp.endsWith('index.html')) res.setHeader('Cache-Control','no-store'); }
 }));
+// serve uploaded receipts
+app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
 // ---------- Socket.IO ----------
 io.on('connection',()=>console.log('Realtime client connected'));
@@ -109,35 +111,50 @@ const handleAdd = (type, mapper) => async (req,res)=>{
       id: b.id || newId(),
       dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
-    }, mapper(b));
+    }, mapper(b, req));
     await appendRecord(type, record);
     io.emit('new-record', { type, record });
     res.json({ ok:true, type, record });
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error:err.message }); }
 };
 
-// ===== Sales =====
+// ===== Sales (product/tillNumber لم تعد مطلوبة) =====
 const addSale = handleAdd('sales', b=>({
-  product: b.product||'',
   quantity: Number(b.quantity||1),
   unitPrice: Number(b.unitPrice||0),
-  amount: Number(b.amount || b.total || (Number(b.quantity||1)*Number(b.unitPrice||0)) || 0),
+  amount: Number(b.amount || (Number(b.quantity||1)*Number(b.unitPrice||0)) || 0),
   method: b.method || b.payment || 'Cash',
   note: b.note||'',
-  tillNumber: b.tillNumber || ''
 }));
 app.post('/api/sales/add', addSale);
 app.post('/save-sale', addSale);
 
-// ===== Expenses =====
-const addExpense = handleAdd('expenses', b=>({
-  item: b.item||b.name||'',
-  amount: Number(b.amount||0),
-  method: b.method||b.payment||'Cash',
-  note: b.note||'',
-}));
-app.post('/api/expenses/add', addExpense);
-app.post('/save-expense', addExpense);
+// ===== Expenses (with receipt upload) =====
+const storage = multer.diskStorage({
+  destination: (_, __, cb)=> cb(null, UPLOAD_DIR),
+  filename:    (_, file, cb)=> cb(null, `${Date.now()}-${file.originalname}`.replace(/\s+/g,'_'))
+});
+const upload = multer({ storage });
+
+app.post('/api/expenses/add', upload.single('receipt'), async (req,res)=>{
+  try{
+    const b=req.body||{}; const now=new Date();
+    const record = {
+      id: newId(),
+      dateISO: parseToISO(b.date),
+      createdAt: now.toISOString(),
+      item: b.item||'',
+      amount: Number(b.amount||0),
+      method: b.method||'Cash',
+      note: b.note||'',
+      receiptPath: req.file ? `/uploads/${req.file.filename}` : ''
+    };
+    await appendRecord('expenses', record);
+    io.emit('new-record', { type:'expenses', record });
+    res.json({ ok:true, type:'expenses', record });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+app.post('/save-expense', upload.single('receipt'), (req,res,next)=>{ req.url='/api/expenses/add'; next(); });
 
 // ===== Credits & Payments =====
 const addCredit = handleAdd('credits', b=>{
@@ -147,7 +164,6 @@ const addCredit = handleAdd('credits', b=>{
 app.post('/api/credits/add', addCredit);
 app.post('/save-credit', addCredit);
 
-// credit payment (reduces outstanding)
 const addCreditPayment = handleAdd('credit_payments', b=>({
   customer: b.customer||'',
   paid: Number(b.paid||b.amount||0),
@@ -169,7 +185,6 @@ const addOrder = handleAdd('orders', b=>{
 app.post('/api/orders/add', addOrder);
 app.post('/save-order', addOrder);
 
-// update order status (append event)
 app.post('/api/orders/status', async (req,res)=>{
   try{
     const { id, status } = req.body||{};
@@ -181,13 +196,12 @@ app.post('/api/orders/status', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// ---------- List / Export (special for orders/credits) ----------
+// ---------- List / Export ----------
 app.get('/api/orders/list', async (req,res)=>{
   try{
     const base = filterByQuery(await readAll('orders'), req.query||{});
     const statusEv = await readAll('orders_status');
-    const latest = new Map();
-    for (const ev of statusEv) latest.set(ev.id, ev.status);
+    const latest = new Map(); for (const ev of statusEv) latest.set(ev.id, ev.status);
     const rows = base.map(r=>Object.assign({}, r, { status: latest.get(r.id)||r.status||'Pending' }));
     res.json({ ok:true, type:'orders', count: rows.length, rows });
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
@@ -199,7 +213,6 @@ app.get('/api/credits/payments/list', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// generic lists
 app.get('/api/:type/list', async (req,res)=>{
   try{
     const type=req.params.type;
@@ -209,7 +222,6 @@ app.get('/api/:type/list', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// CSV export
 app.get('/api/:type/export', async (req,res)=>{
   try{
     const type=req.params.type;
@@ -221,7 +233,7 @@ app.get('/api/:type/export', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// PDF daily report
+// PDF daily report (كما كان)
 app.get('/api/report/daily-pdf', async (req,res)=>{
   try{
     const PDFDocument = require('pdfkit');
@@ -256,14 +268,12 @@ app.get('/api/report/daily-pdf', async (req,res)=>{
     doc.pipe(res);
     doc.fontSize(18).text('Zaad Bakery — Daily Report', {align:'center'}).moveDown(0.5);
     doc.fontSize(11).text(`Range: ${from} to ${to}`).moveDown();
-
-    const lines = [
+    [
       ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend],
       ['Expenses', expTot], ['Credit Outstanding', crOutstanding], ['Orders Total', sumBy(orders, r=>+r.amount)],
       ['Cash Morning', morning], ['Cash Evening', evening], ['EOD Withdrawals', eod],
       ['Expected (evening)', expected], ['Difference', diff], ['Carry-over Next Day', carry]
-    ];
-    lines.forEach(([t,v])=> doc.text(`${t}: ${(+v).toFixed(2)}`));
+    ].forEach(([t,v])=> doc.text(`${t}: ${(+v).toFixed(2)}`));
     doc.moveDown().text('Generated by Zaad Bakery System', {align:'right', oblique:true});
     doc.end();
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
