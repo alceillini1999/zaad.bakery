@@ -1,22 +1,24 @@
-:root {
-  --brand:#0d6efd;
-  --bg:#f8f9fb;
-}
-*{font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;}
-body{background:var(--bg);}
-.brand-pills .nav-link{border-radius: 999px; padding:.4rem 1rem;}
-.brand-pills .nav-link.active{background: var(--brand);}
-.card{border:0; box-shadow: 0 6px 20px rgba(0,0,0,.06);}
-.table> :not(caption)>*>*{padding:.65rem .75rem;}
-.table thead th{font-weight:600;}
-.badge-method{font-weight: 600;}
-.badge-Cash{background:#e8fff2;color:#0a7a2d;border:1px solid #bdf0d0;}
-.badge-Withdrawal{background:#fff7e6;color:#a76a00;border:1px solid #ffe3b0;}
-.badge-Till{background:#eaf3ff;color:#0b5ed7;border:1px solid #cfe0ff;}
-.badge-Send{background:#f3e8ff;color:#6f42c1;border:1px solid #e4d4ff;}
-/* dark toggle */
-.dark body{background:#0f1222;}
-.dark .navbar, .dark .card, .dark .table, .dark .table thead{background:#161a2f !important; color:#cfd3ff;}
-.dark .card-header{background:#161a2f !important;}
-.dark .form-control, .dark .form-select, .dark .form-check-label{background:#101327;color:#d9ddff;border-color:#2a2f4e;}
-.dark .table{color:#d9ddff;}
+:root{--brand:#0d6efd;--brand-2:#0bb5ff;--bg:#f7f8fb;--ink:#1f2540;}
+*{font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+body{background:var(--bg);color:var(--ink);}
+.brand-pills .nav-link{border-radius:999px;padding:.45rem 1rem}
+.brand-pills .nav-link.active{background:var(--brand)}
+.card{border:0;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.table> :not(caption)>*>*{padding:.65rem .75rem}
+.table thead th{font-weight:600;cursor:pointer;user-select:none}
+.table thead th.sorted-asc::after{content:" ▲";font-size:.8em;color:#888}
+.table thead th.sorted-desc::after{content:" ▼";font-size:.8em;color:#888}
+.dark body{background:#0f1222;color:#d9ddff}
+.dark .navbar,.dark .card,.dark .table,.dark .table thead{background:#161a2f!important;color:#cfd3ff}
+.dark .card-header{background:#161a2f!important}
+.dark .form-control,.dark .form-select,.dark .form-check-label{background:#101327;color:#d9ddff;border-color:#2a2f4e}
+.dark .table{color:#d9ddff}
+.badge-method{font-weight:600}
+.badge-Cash{background:#e8fff2;color:#0a7a2d;border:1px solid #bdf0d0}
+.badge-Withdrawal{background:#fff7e6;color:#a76a00;border:1px solid #ffe3b0}
+.badge-Till{background:#eaf3ff;color:#0b5ed7;border:1px solid #cfe0ff}
+.badge-Send{background:#f3e8ff;color:#6f42c1;border:1px solid #e4d4ff}
+/* skeleton */
+.skeleton td{position:relative;color:transparent}
+.skeleton td::after{content:"";position:absolute;inset:6px;border-radius:6px;background:linear-gradient(90deg,#eee,#f5f5f5,#eee);background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}

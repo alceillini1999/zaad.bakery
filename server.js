@@ -1,4 +1,5 @@
-// server.js — Zaad Bakery (Render-ready, fixed handlers)
+// server.js — Zaad Bakery (Render-ready, Pro)
+// Features: IDs, Credit Payments, Order Status, CSV+PDF export, EOD cash, BasicAuth
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -19,7 +20,9 @@ const FILES = {
   sales: path.join(DATA_DIR, 'sales.jsonl'),
   expenses: path.join(DATA_DIR, 'expenses.jsonl'),
   credits: path.join(DATA_DIR, 'credits.jsonl'),
+  credit_payments: path.join(DATA_DIR, 'credit_payments.jsonl'),
   orders: path.join(DATA_DIR, 'orders.jsonl'),
+  orders_status: path.join(DATA_DIR, 'orders_status.jsonl'),
   cash: path.join(DATA_DIR, 'cash.jsonl'),
 };
 
@@ -30,234 +33,242 @@ function ensureDataDir() {
     if (!fs.existsSync(p)) fs.writeFileSync(p, '');
   }
 }
-
-function todayISO(d = new Date()) {
-  return new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
+function todayISO(d = new Date()) { return new Date(d).toISOString().slice(0,10); }
 function parseToISO(input) {
   if (!input) return todayISO();
   if (typeof input === 'string') {
-    if (input.includes('/')) {
-      const [dd, mm, yyyy] = input.split('/');
-      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-    }
-    return input.slice(0, 10);
+    if (input.includes('/')) { const [dd,mm,yyyy]=input.split('/'); return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`; }
+    return input.slice(0,10);
   }
   return todayISO(input);
 }
+function newId(){ return (Date.now().toString(36) + Math.random().toString(36).slice(2,6)).toUpperCase(); }
 
 async function appendRecord(type, obj) {
-  const file = FILES[type];
-  if (!file) throw new Error('Unknown type');
-  const line = JSON.stringify(obj) + '\n';
-  await fsp.appendFile(file, line, 'utf8');
+  const file = FILES[type]; if (!file) throw new Error('Unknown type');
+  const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
 }
-
 async function readAll(type) {
-  const file = FILES[type];
-  if (!file) throw new Error('Unknown type');
+  const file = FILES[type]; if (!file) throw new Error('Unknown type');
   if (!fs.existsSync(file)) return [];
-  const raw = await fsp.readFile(file, 'utf8');
-  if (!raw.trim()) return [];
-  return raw
-    .split('\n')
-    .filter(Boolean)
-    .map((l) => { try { return JSON.parse(l); } catch { return null; } })
-    .filter(Boolean);
+  const raw = await fsp.readFile(file, 'utf8'); if (!raw.trim()) return [];
+  return raw.split('\n').filter(Boolean).map(l=>{try{return JSON.parse(l);}catch{return null;}}).filter(Boolean);
 }
-
 function filterByQuery(rows, q) {
   const from = q.from ? parseToISO(q.from) : null;
-  const to = q.to ? parseToISO(q.to) : null;
-  const method = q.method || q.payment || null;
+  const to   = q.to   ? parseToISO(q.to)   : null;
+  const method   = q.method || q.payment || null;
   const customer = q.customer || q.name || null;
-
-  return rows.filter(r => {
+  const session  = q.session || null;
+  return rows.filter(r=>{
     const d = r.dateISO || r.date || todayISO();
     if (from && d < from) return false;
     if (to && d > to) return false;
     if (method && (r.method !== method && r.payment !== method)) return false;
     if (customer && (r.customer || r.client || '').toLowerCase() !== customer.toLowerCase()) return false;
+    if (session && r.session !== session) return false;
     return true;
   });
 }
-
 function toCSV(rows) {
   if (!rows.length) return 'empty\n';
-  const headers = Array.from(
-    rows.reduce((set, obj) => { Object.keys(obj).forEach(k => set.add(k)); return set; }, new Set())
-  );
-  const escape = (v) => {
-    if (v == null) return '';
-    const s = String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const lines = [
-    headers.join(','),
-    ...rows.map(r => headers.map(h => escape(r[h])).join(','))
-  ];
-  return lines.join('\n');
+  const headers = Array.from(rows.reduce((set,o)=>{Object.keys(o).forEach(k=>set.add(k));return set;}, new Set()));
+  const esc = s => s==null? '' : /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g,'""')}"` : String(s);
+  return [headers.join(','), ...rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n');
 }
+const sumBy=(arr,fn)=>arr.reduce((a,x)=>a+(+fn(x)||0),0);
 
 // ---------- Middleware ----------
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Basic Auth اختياري من env
-function basicAuth(req, res, next) {
-  const u = process.env.PUBLIC_AUTH_USER;
-  const p = process.env.PUBLIC_AUTH_PASS;
-  if (!u || !p) return next();
-  const hdr = req.headers.authorization || '';
-  const [type, val] = hdr.split(' ');
-  if (type === 'Basic' && val) {
-    const [user, pass] = Buffer.from(val, 'base64').toString().split(':');
-    if (user === u && pass === p) return next();
-  }
-  res.set('WWW-Authenticate', 'Basic realm="Zaad Bakery"');
-  return res.status(401).send('Authentication required');
+// Basic Auth (optional via env)
+function basicAuth(req,res,next){
+  const u=process.env.PUBLIC_AUTH_USER, p=process.env.PUBLIC_AUTH_PASS;
+  if(!u||!p) return next();
+  const hdr=req.headers.authorization||''; const [type,val]=hdr.split(' ');
+  if(type==='Basic'&&val){ const [user,pass]=Buffer.from(val,'base64').toString().split(':'); if(user===u&&pass===p) return next(); }
+  res.set('WWW-Authenticate','Basic realm="Zaad Bakery"'); return res.status(401).send('Authentication required');
 }
 app.use(basicAuth);
 
-// Static
-app.use(express.static(path.join(__dirname, 'public')));
+// Static (no-cache index for fresh UI)
+app.use(express.static(path.join(__dirname, 'public'),{
+  etag:false,lastModified:false,setHeaders:(res,fp)=>{ if (fp.endsWith('index.html')) res.setHeader('Cache-Control','no-store'); }
+}));
 
 // ---------- Socket.IO ----------
-io.on('connection', () => console.log('Realtime client connected'));
+io.on('connection',()=>console.log('Realtime client connected'));
 
 // ---------- Generic add handler ----------
-const handleAdd = (type, mapper) => async (req, res) => {
-  try {
-    const body = req.body || {};
-    const now = new Date();
-    const base = {
-      dateISO: parseToISO(body.date),
+const handleAdd = (type, mapper) => async (req,res)=>{
+  try{
+    const b=req.body||{}; const now=new Date();
+    const record = Object.assign({
+      id: b.id || newId(),
+      dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
-    };
-    const record = Object.assign(base, mapper(body));
+    }, mapper(b));
     await appendRecord(type, record);
     io.emit('new-record', { type, record });
-    res.json({ ok: true, type, record });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+    res.json({ ok:true, type, record });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error:err.message }); }
 };
 
 // ===== Sales =====
-const addSale = handleAdd('sales', (b) => ({
-  amount: Number(b.amount || b.total || (Number(b.quantity || 1) * Number(b.unitPrice || 0)) || 0),
+const addSale = handleAdd('sales', b=>({
+  product: b.product||'',
+  quantity: Number(b.quantity||1),
+  unitPrice: Number(b.unitPrice||0),
+  amount: Number(b.amount || b.total || (Number(b.quantity||1)*Number(b.unitPrice||0)) || 0),
   method: b.method || b.payment || 'Cash',
-  note: b.note || '',
+  note: b.note||'',
+  tillNumber: b.tillNumber || ''
 }));
 app.post('/api/sales/add', addSale);
-// توافق مع المسار القديم
 app.post('/save-sale', addSale);
 
 // ===== Expenses =====
-const addExpense = handleAdd('expenses', (b) => ({
-  item: b.item || b.name || '',
-  amount: Number(b.amount || 0),
-  method: b.method || b.payment || 'Cash',
-  note: b.note || '',
+const addExpense = handleAdd('expenses', b=>({
+  item: b.item||b.name||'',
+  amount: Number(b.amount||0),
+  method: b.method||b.payment||'Cash',
+  note: b.note||'',
 }));
 app.post('/api/expenses/add', addExpense);
 app.post('/save-expense', addExpense);
 
-// ===== Credits =====
-const addCredit = handleAdd('credits', (b) => {
-  const paid = Number(b.paid || 0);
-  const amount = Number(b.amount || 0);
-  return {
-    customer: b.customer || b.name || '',
-    item: b.item || '',
-    amount,
-    paid,
-    remaining: Math.max(0, amount - paid),
-    note: b.note || '',
-    paymentDateISO: b.paymentDate ? parseToISO(b.paymentDate) : '',
-  };
+// ===== Credits & Payments =====
+const addCredit = handleAdd('credits', b=>{
+  const paid=Number(b.paid||0), amount=Number(b.amount||0);
+  return { customer:b.customer||b.name||'', item:b.item||'', amount, paid, remaining:Math.max(0, amount-paid), note:b.note||'', paymentDateISO: b.paymentDate?parseToISO(b.paymentDate):'' };
 });
 app.post('/api/credits/add', addCredit);
 app.post('/save-credit', addCredit);
 
-// ===== Orders =====
-const addOrder = handleAdd('orders', (b) => {
-  const paid = Number(b.paid || 0);
-  const amount = Number(b.amount || 0);
+// credit payment (reduces outstanding)
+const addCreditPayment = handleAdd('credit_payments', b=>({
+  customer: b.customer||'',
+  paid: Number(b.paid||b.amount||0),
+  note: b.note||'',
+}));
+app.post('/api/credits/pay', addCreditPayment);
+
+// ===== Orders & Status =====
+const addOrder = handleAdd('orders', b=>{
+  const paid=Number(b.paid||0), amount=Number(b.amount||0);
   return {
-    phone: b.phone || b.clientPhone || '',
-    item: b.item || b.product || '',
-    amount,
-    paid,
-    remaining: Math.max(0, amount - paid),
-    note: b.note || '',
+    phone: b.phone||b.clientPhone||'',
+    item: b.item||b.product||'',
+    amount, paid, remaining:Math.max(0, amount-paid),
+    status: (b.status||'Pending'),
+    note:b.note||'',
   };
 });
 app.post('/api/orders/add', addOrder);
 app.post('/save-order', addOrder);
 
-// ===== Cash (morning/evening) =====
-const addCash = handleAdd('cash', (b) => ({
-  session: b.session || b.time || 'morning',
-  breakdown: b.breakdown || {},
-  total: Number(b.total || 0),
-  note: b.note || '',
-}));
-app.post('/api/cash/add', addCash);
-app.post('/save-cash', addCash);
-
-// ---------- List / Export ----------
-app.get('/api/:type/list', async (req, res) => {
-  try {
-    const type = req.params.type;
-    const rows = await readAll(type);
-    res.json({ ok: true, type, count: rows.length, rows: filterByQuery(rows, req.query || {}) });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
+// update order status (append event)
+app.post('/api/orders/status', async (req,res)=>{
+  try{
+    const { id, status } = req.body||{};
+    if(!id || !status) return res.status(400).json({ ok:false, error:'id & status required' });
+    const rec = { id, status, dateISO: todayISO(), createdAt: new Date().toISOString() };
+    await appendRecord('orders_status', rec);
+    io.emit('new-record', { type:'orders_status', record: rec });
+    res.json({ ok:true, record: rec });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-app.get('/load', async (req, res) => {
-  try {
-    const type = (req.query.type || '').toLowerCase();
-    const rows = await readAll(type);
-    res.json({ ok: true, type, count: rows.length, rows: filterByQuery(rows, req.query || {}) });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
+// ---------- List / Export (special for orders/credits) ----------
+app.get('/api/orders/list', async (req,res)=>{
+  try{
+    const base = filterByQuery(await readAll('orders'), req.query||{});
+    const statusEv = await readAll('orders_status');
+    const latest = new Map();
+    for (const ev of statusEv) latest.set(ev.id, ev.status);
+    const rows = base.map(r=>Object.assign({}, r, { status: latest.get(r.id)||r.status||'Pending' }));
+    res.json({ ok:true, type:'orders', count: rows.length, rows });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+app.get('/api/credits/payments/list', async (req,res)=>{
+  try{
+    const rows = filterByQuery(await readAll('credit_payments'), req.query||{});
+    res.json({ ok:true, type:'credit_payments', count: rows.length, rows });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-app.get('/api/:type/export', async (req, res) => {
-  try {
-    const type = req.params.type;
-    const rows = filterByQuery(await readAll(type), req.query || {});
+// generic lists
+app.get('/api/:type/list', async (req,res)=>{
+  try{
+    const type=req.params.type;
+    if (type==='orders') return; // handled above
+    const rows = filterByQuery(await readAll(type), req.query||{});
+    res.json({ ok:true, type, count: rows.length, rows });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// CSV export
+app.get('/api/:type/export', async (req,res)=>{
+  try{
+    const type=req.params.type;
+    const rows = filterByQuery(await readAll(type), req.query||{});
     const csv = toCSV(rows);
     res.setHeader('Content-Disposition', `attachment; filename="${type}.csv"`);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.send(csv);
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-app.get('/export-csv', async (req, res) => {
-  try {
-    const type = (req.query.type || '').toLowerCase();
-    const rows = filterByQuery(await readAll(type), req.query || {});
-    const csv = toCSV(rows);
-    res.setHeader('Content-Disposition', `attachment; filename="${type}.csv"`);
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.send(csv);
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
+// PDF daily report
+app.get('/api/report/daily-pdf', async (req,res)=>{
+  try{
+    const PDFDocument = require('pdfkit');
+    const from = req.query.from || todayISO(), to = req.query.to || from;
+    const [sales, expenses, credits, orders, cash, payments] = await Promise.all([
+      filterByQuery(await readAll('sales'),   {from,to}),
+      filterByQuery(await readAll('expenses'),{from,to}),
+      filterByQuery(await readAll('credits'), {from,to}),
+      filterByQuery(await readAll('orders'),  {from,to}),
+      filterByQuery(await readAll('cash'),    {from,to}),
+      filterByQuery(await readAll('credit_payments'),{from,to}),
+    ]);
+
+    const sCash = sumBy(sales, r=>/cash/i.test(r.method)?+r.amount:0);
+    const sTill = sumBy(sales, r=>/till/i.test(r.method)?+r.amount:0);
+    const sWith = sumBy(sales, r=>/withdraw/i.test(r.method)?+r.amount:0);
+    const sSend = sumBy(sales, r=>/send/i.test(r.method)?+r.amount:0);
+    const expTot = sumBy(expenses, r=>+r.amount);
+    const crGross = sumBy(credits, r=>+r.amount - (+r.paid||0));
+    const crPays  = sumBy(payments, r=>+r.paid);
+    const crOutstanding = crGross - crPays;
+    const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>+r.total);
+    const evening = sumBy(cash.filter(x=>x.session==='evening'), r=>+r.total);
+    const eod     = sumBy(cash.filter(x=>x.session==='eod'),     r=>+r.total);
+    const expected = morning + sCash - expTot;
+    const diff = expected - evening;
+    const carry = Math.max(0, evening - eod);
+
+    res.setHeader('Content-Type','application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="zaad-report-${from}_${to}.pdf"`);
+    const doc = new PDFDocument({ margin: 40 });
+    doc.pipe(res);
+    doc.fontSize(18).text('Zaad Bakery — Daily Report', {align:'center'}).moveDown(0.5);
+    doc.fontSize(11).text(`Range: ${from} to ${to}`).moveDown();
+
+    const lines = [
+      ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend],
+      ['Expenses', expTot], ['Credit Outstanding', crOutstanding], ['Orders Total', sumBy(orders, r=>+r.amount)],
+      ['Cash Morning', morning], ['Cash Evening', evening], ['EOD Withdrawals', eod],
+      ['Expected (evening)', expected], ['Difference', diff], ['Carry-over Next Day', carry]
+    ];
+    lines.forEach(([t,v])=> doc.text(`${t}: ${(+v).toFixed(2)}`));
+    doc.moveDown().text('Generated by Zaad Bakery System', {align:'right', oblique:true});
+    doc.end();
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
 // ---------- Boot ----------
 ensureDataDir();
-server.listen(PORT, HOST, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+server.listen(PORT, HOST, ()=> console.log(`Server running on http://localhost:${PORT}`));
