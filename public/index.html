@@ -3,366 +3,238 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Zaad Bakery — لوحة التحكم</title>
+<title>Zaad Bakery – Sales & Cash Manager</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <style>
-  :root{
-    --bg:#0b1220; --card:#121a2a; --muted:#8ea3b0; --text:#eaf2f8; --accent:#5dd6a0; --danger:#ff6b6b; --warn:#ffd166; --grid:#1a2438;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Kufi Arabic","Cairo",sans-serif}
+  :root{ --bg:#0b1220; --card:#121a2a; --muted:#8ea3b0; --text:#eaf2f8; --accent:#5dd6a0; --danger:#ff6b6b; --warn:#ffd166; }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Kufi Arabic","Cairo",sans-serif}
   header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(11,18,32,.95),rgba(11,18,32,.7) 70%,transparent);backdrop-filter: blur(6px);border-bottom:1px solid #1f2a44}
-  .container{max-width:1200px;margin-inline:auto;padding:16px}
+  .container{max-width:1250px;margin-inline:auto;padding:14px}
   .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-  .title{font-weight:700;font-size:20px;letter-spacing:.3px}
-  .ctrls{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .title{font-weight:800;font-size:20px}
   .card{background:var(--card);border:1px solid #1f2a44;border-radius:16px;padding:14px}
-  .kpis{display:grid;gap:12px;grid-template-columns:repeat(6,minmax(140px,1fr))}
+  .kpis{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
   .kpi h4{margin:0 0 6px 0;font-weight:600;color:var(--muted);font-size:13px}
   .kpi .v{font-weight:800;font-size:22px}
-  .kpi.pos{color:var(--accent)}
-  .kpi.neg{color:var(--danger)}
-  .grid{display:grid;gap:12px;grid-template-columns:2fr 1.2fr}
-  .grid-2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  .pos{color:var(--accent)} .neg{color:var(--danger)} .muted{color:var(--muted)}
+  .grid{display:grid;gap:12px;grid-template-columns:1.8fr 1.2fr}
   .grid-3{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr}
-  .field{display:flex;gap:8px;align-items:center}
-  input,select,button{background:#0e1626;color:var(--text);border:1px solid #27314a;border-radius:10px;padding:8px 10px;font-size:14px}
-  button{cursor:pointer}
-  button.primary{background:#19324f;border-color:#29507c}
-  button.warn{background:#3b2b07;border-color:#70520c}
-  a.btn{display:inline-block;text-decoration:none}
-  table{width:100%;border-collapse:collapse}
-  th,td{border-bottom:1px dashed #243151;padding:8px 6px;font-size:13px}
-  th{color:var(--muted);text-align:right}
-  tr:hover td{background:#0f1728}
-  .muted{color:var(--muted)}
-  .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid #2a3757;background:#0d1629;color:#cfe3ff;font-size:12px}
-  .flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .right{margin-inline-start:auto}
-  .sep{height:1px;background:#1f2a44;margin:10px 0}
-  canvas{max-width:100%;}
-  @media (max-width:1100px){ .grid{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(2,1fr)} }
+  .grid-2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  input,select,button{background:#0e1626;color:var(--text);border:1px solid #27314a;border-radius:10px;padding:8px 10px;font-size:13px}
+  button{cursor:pointer} button.primary{background:#19324f;border-color:#29507c}
+  table{width:100%;border-collapse:collapse} th,td{border-bottom:1px dashed #243151;padding:8px 6px;font-size:13px} th{color:var(--muted);text-align:right}
+  .badge{display:inline-flex;gap:6px;border:1px solid #2a3757;border-radius:999px;padding:2px 8px;background:#0d1629}
+  canvas{max-width:100%}
+  @media(max-width:1100px){ .grid{grid-template-columns:1fr} .kpis{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
-  <header>
-    <div class="container row">
-      <div class="title">لوحة التحكم — Zaad Bakery</div>
-      <div class="ctrls">
-        <div class="field">
-          <label for="date">تاريخ:</label>
-          <input type="date" id="date">
-        </div>
-        <button id="refresh" class="primary">تحديث</button>
-        <a id="export-xlsx" class="btn" href="#" target="_blank"><button>تصدير XLSX</button></a>
-        <a id="export-pdf" class="btn" href="#" target="_blank"><button>تصدير PDF</button></a>
-        <a id="export-sales" class="btn" href="#" target="_blank"><button>CSV المبيعات (اليوم)</button></a>
-        <a id="export-expenses" class="btn" href="#" target="_blank"><button>CSV المصروفات (اليوم)</button></a>
-        <a id="export-cash" class="btn" href="#" target="_blank"><button>CSV الكاش (اليوم)</button></a>
+<header>
+  <div class="container row">
+    <div class="title">Zaad Bakery – لوحة التحكم</div>
+    <div style="margin-inline-start:auto" class="row">
+      <label>تاريخ: <input type="date" id="date"></label>
+      <button id="refresh" class="primary">تحديث</button>
+      <a id="export-xlsx" href="#" target="_blank"><button>تصدير XLSX</button></a>
+      <a id="export-pdf"  href="#" target="_blank"><button>تصدير PDF</button></a>
+    </div>
+  </div>
+</header>
+
+<main class="container" style="padding-top:10px">
+
+  <!-- KPIs -->
+  <section class="card">
+    <div class="kpis">
+      <div class="kpi"><h4>مبيعات اليوم</h4><div class="v" id="kpi-sales">—</div></div>
+      <div class="kpi"><h4>مصروفات اليوم</h4><div class="v" id="kpi-exp">—</div></div>
+      <div class="kpi"><h4>الربح (مبدئي)</h4><div class="v" id="kpi-profit">—</div></div>
+      <div class="kpi"><h4>كاش صباحًا</h4><div class="v" id="kpi-cm">—</div></div>
+      <div class="kpi"><h4>كاش مساءً</h4><div class="v" id="kpi-ce">—</div></div>
+      <div class="kpi"><h4>فرق الكاش</h4><div class="v" id="kpi-cdiff">—</div></div>
+    </div>
+  </section>
+
+  <!-- Charts + Mobile ledger -->
+  <section class="grid">
+    <div class="card">
+      <div class="row"><h3 style="margin:0">مبيعات آخر 7 أيام</h3><span class="badge" id="lan"></span></div>
+      <canvas id="chart7"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">توزيع المبيعات حسب الوسيلة (اليوم)</h3>
+      <canvas id="chartMethods"></canvas>
+      <div class="row" style="margin-top:8px">
+        <span class="muted">فرق المحفظة:</span>
+        <span id="m-withdraw" class="badge">Withdraw: —</span>
+        <span id="m-buygoods" class="badge">Buy Goods: —</span>
+        <span id="m-sendmoney" class="badge">Send Money: —</span>
       </div>
     </div>
-  </header>
+  </section>
 
-  <main class="container" style="padding-top:10px;">
+  <!-- Today tables -->
+  <section class="grid-3">
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">مبيعات اليوم</h3>
+      <table id="tbl-sales"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">مصروفات اليوم</h3>
+      <table id="tbl-exp"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الفئة</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">جرد الكاش</h3>
+      <table id="tbl-cash"><thead><tr><th>الوقت</th><th>الوردية</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
 
-    <!-- KPIs -->
-    <section class="card">
-      <div class="kpis">
-        <div class="kpi"><h4>إجمالي المبيعات</h4><div class="v" id="kpi-sales">—</div></div>
-        <div class="kpi"><h4>إجمالي المصروفات</h4><div class="v" id="kpi-expenses">—</div></div>
-        <div class="kpi"><h4>الربح</h4><div class="v" id="kpi-profit">—</div></div>
-        <div class="kpi"><h4>كاش صباحًا</h4><div class="v" id="kpi-cm">—</div></div>
-        <div class="kpi"><h4>كاش مساءً</h4><div class="v" id="kpi-ce">—</div></div>
-        <div class="kpi"><h4>فرق الكاش</h4><div class="v" id="kpi-cdiff">—</div></div>
+  <!-- Orders & Aging -->
+  <section class="grid-2">
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">أوامر غير مدفوعة (اليوم)</h3>
+      <table id="tbl-orders"><thead><tr><th>الوقت</th><th>العميل</th><th>الإجمالي</th><th>حالة</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">Aging للكريدت</h3>
+      <div class="row">
+        <span class="badge" id="b0">0–7: —</span>
+        <span class="badge" id="b1">8–14: —</span>
+        <span class="badge" id="b2">15–30: —</span>
+        <span class="badge" id="b3">30+: —</span>
       </div>
-    </section>
+      <table id="tbl-aging"><thead><tr><th>العميل</th><th>الرصيد</th><th>أيام</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
 
-    <!-- Charts -->
-    <section class="grid">
-      <div class="card">
-        <div class="flex">
-          <h3 style="margin:0">مبيعات آخر 7 أيام</h3>
-          <span class="badge"><span>Realtime</span><span id="rt-dot">●</span></span>
-          <span class="right muted" id="lan"></span>
-        </div>
-        <div style="padding-top:6px">
-          <canvas id="chart7"></canvas>
-        </div>
-      </div>
-      <div class="card">
-        <h3 style="margin:0 0 8px 0">توزيع المبيعات حسب الوسيلة (اليوم)</h3>
-        <canvas id="chartMethods"></canvas>
-      </div>
-    </section>
+</main>
 
-    <!-- Sales search -->
-    <section class="card">
-      <div class="flex">
-        <h3 style="margin:0">فلترة المبيعات</h3>
-        <button id="doSearch" class="primary right">بحث</button>
-        <button id="doExportFilter" class="warn">تصدير CSV للفلتر</button>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div class="field"><label>من</label><input type="date" id="from"></div>
-        <div class="field"><label>إلى</label><input type="date" id="to"></div>
-        <div class="field">
-          <label>الطريقة</label>
-          <select id="method">
-            <option value="">All</option>
-            <option>Cash</option>
-            <option>Buy Goods</option>
-            <option>Send Money</option>
-          </select>
-        </div>
-        <div class="field"><label>أدنى</label><input type="number" id="min" placeholder="0"></div>
-        <div class="field"><label>أقصى</label><input type="number" id="max" placeholder="∞"></div>
-        <div class="field" style="flex:1"><label>كلمة</label><input type="text" id="q" placeholder="ملاحظة/كلمة"></div>
-      </div>
-      <div class="sep"></div>
-      <div class="flex">
-        <div class="muted">عدد النتائج: <b id="res-count">0</b></div>
-        <div class="muted">الإجمالي: <b id="res-total">0</b></div>
-      </div>
-      <div style="overflow:auto;margin-top:6px">
-        <table id="tbl-search">
-          <thead><tr><th>التاريخ</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
+const todayISO = ()=>{ const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 
-    <!-- Today tables -->
-    <section class="grid-3">
-      <div class="card">
-        <h3 style="margin:0 0 8px 0">مبيعات اليوم</h3>
-        <table id="tbl-sales"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
-      </div>
-      <div class="card">
-        <h3 style="margin:0 0 8px 0">مصروفات اليوم</h3>
-        <table id="tbl-exp"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الفئة</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
-      </div>
-      <div class="card">
-        <h3 style="margin:0 0 8px 0">الكاش اليوم</h3>
-        <table id="tbl-cash"><thead><tr><th>الوقت</th><th>الوردية</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
-      </div>
-    </section>
+let chart7, chartMethods;
 
-    <!-- Credit summary -->
-    <section class="card">
-      <h3 style="margin:0 0 8px 0">رصيد العملاء (ائتمان)</h3>
-      <table id="tbl-credit"><thead><tr><th>العميل</th><th>مشتريات</th><th>مدفوع</th><th>رصيد</th></tr></thead><tbody></tbody></table>
-    </section>
+async function jget(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 
-  </main>
+function setExports(d){
+  $("#export-xlsx").href = `/api/export/xlsx/daily?date=${d}`;
+  $("#export-pdf").href  = `/api/export/pdf/daily?date=${d}`;
+}
 
-  <!-- Chart.js & Socket.io -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const $ = s => document.querySelector(s);
-    const fmt = n => Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
+function fillTable(tbody, rows, cols){
+  tbody.innerHTML = rows.map(r=>`<tr>${cols.map(c=>`<td>${c(r)??''}</td>`).join('')}</tr>`).join('');
+}
 
-    // ====== API helpers ======
-    async function jget(url){
-      const r = await fetch(url);
-      if(!r.ok) throw new Error(await r.text());
-      return r.json();
-    }
+async function loadDaily(d){
+  const R = await jget(`/api/reports/daily?date=${d}`);
+  $("#kpi-sales").textContent = fmt(R.salesTotal);
+  $("#kpi-exp").textContent = fmt(R.expensesTotal);
+  $("#kpi-profit").textContent = fmt(R.profit);
+  $("#kpi-cm").textContent = fmt(R.cashMorning);
+  $("#kpi-ce").textContent = fmt(R.cashEvening);
+  const cd = R.cashDiff; const el=$("#kpi-cdiff");
+  el.textContent = fmt(cd); el.classList.toggle('pos', cd>=0); el.classList.toggle('neg', cd<0);
+}
+async function loadLast7(){
+  const arr = await jget('/api/reports/last7');
+  const labels = arr.map(x=>x.date.slice(5));
+  const data = arr.map(x=>x.total);
+  if(chart7) chart7.destroy();
+  chart7 = new Chart($("#chart7"), { type:'line', data:{ labels, datasets:[{ label:'المبيعات', data, tension:.35, borderWidth:2, pointRadius:3 }]}, options:{ plugins:{legend:{display:false}} } });
+}
+function byMethod(rows){ const m={}; rows.forEach(r=>{const k=r.method||'—'; m[k]=(m[k]||0)+(+r.amount||0);}); return m; }
+async function loadSalesForDay(d){
+  const rows = await jget(`/api/sales?date=${d}`);
+  fillTable($("#tbl-sales tbody"), rows, [
+    r=> new Date(r.date).toLocaleTimeString('ar-EG'),
+    r=> fmt(r.amount),
+    r=> r.method||'',
+    r=> r.note||''
+  ]);
+  const stats = byMethod(rows), labels=Object.keys(stats), data=labels.map(k=>stats[k]);
+  if(chartMethods) chartMethods.destroy();
+  chartMethods = new Chart($("#chartMethods"), { type:'doughnut', data:{ labels, datasets:[{ data }] }, options:{ plugins:{legend:{position:'bottom'}}, cutout:'55%'} });
+}
+async function loadExpensesForDay(d){
+  const rows = await jget(`/api/expenses?date=${d}`);
+  fillTable($("#tbl-exp tbody"), rows, [
+    r=> new Date(r.date).toLocaleTimeString('ar-EG'),
+    r=> fmt(r.amount),
+    r=> r.category||'',
+    r=> r.method||'',
+    r=> r.note||''
+  ]);
+}
+async function loadCashForDay(d){
+  const rows = await jget(`/api/cashcount?date=${d}`);
+  fillTable($("#tbl-cash tbody"), rows, [
+    r=> new Date(r.date).toLocaleTimeString('ar-EG'),
+    r=> r.Session||'',
+    r=> fmt(r.CashTotal),
+    r=> r.Note||''
+  ]);
+}
+async function loadOrdersUnpaid(d){
+  const rows = await jget(`/api/orders?date=${d}`);
+  const unp = rows.filter(x=>!x.IsPaid);
+  fillTable($("#tbl-orders tbody"), unp, [
+    r=> new Date(r.DateTime).toLocaleTimeString('ar-EG'),
+    r=> r.Customer||r.CustomerPhone||'-',
+    r=> fmt(r.TotalPrice),
+    r=> r.IsPaid?'مدفوع':'غير مدفوع'
+  ]);
+}
+async function loadAging(d){
+  const r = await jget(`/api/reports/aging-credit?date=${d}`);
+  $("#b0").textContent = `0–7: ${fmt(r.buckets['0-7'])}`;
+  $("#b1").textContent = `8–14: ${fmt(r.buckets['8-14'])}`;
+  $("#b2").textContent = `15–30: ${fmt(r.buckets['15-30'])}`;
+  $("#b3").textContent = `30+: ${fmt(r.buckets['30+'])}`;
+  fillTable($("#tbl-aging tbody"), r.list, [x=>x.customer, x=>fmt(x.balance), x=>x.days]);
+}
+async function loadLAN(){
+  try{ const r = await jget('/api/meta/lan'); $("#lan").textContent = r.url; }catch{}
+}
+async function loadMobileVariance(d){
+  const r = await jget(`/api/reports/reconcile?date=${d}`);
+  const v = (x)=> x==null?'—': (x===0? 'OK' : (x>0? `+${fmt(x)}` : `${fmt(x)}`));
+  $("#m-withdraw").textContent = `Withdraw: ${v((r.mobile.find(m=>m.channel==='Withdraw Cash')||{}).variance)}`;
+  $("#m-buygoods").textContent = `Buy Goods: ${v((r.mobile.find(m=>m.channel==='Buy Goods')||{}).variance)}`;
+  $("#m-sendmoney").textContent = `Send Money: ${v((r.mobile.find(m=>m.channel==='Send Money')||{}).variance)}`;
+}
 
-    function todayISO(){
-      const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
-      return d.toISOString().slice(0,10);
-    }
+(async function init(){
+  const d = todayISO();
+  $("#date").value = d;
+  setExports(d);
 
-    function setExports(d){
-      $("#export-xlsx").href = `/api/export/xlsx/daily?date=${d}`;
-      $("#export-pdf").href  = `/api/export/pdf/daily?date=${d}`;
-      $("#export-sales").href= `/api/export/csv/sales?date=${d}`;
-      $("#export-expenses").href = `/api/export/csv/expenses?date=${d}`;
-      $("#export-cash").href = `/api/export/csv/cash?date=${d}`;
-    }
+  $("#refresh").onclick = async ()=>{
+    const dd = $("#date").value || d;
+    setExports(dd);
+    await Promise.all([
+      loadDaily(dd), loadSalesForDay(dd), loadExpensesForDay(dd),
+      loadCashForDay(dd), loadOrdersUnpaid(dd), loadAging(dd),
+      loadLast7(), loadMobileVariance(dd), loadLAN()
+    ]);
+  };
 
-    // ====== Loaders ======
-    let chart7, chartMethods;
+  await Promise.all([
+    loadDaily(d), loadSalesForDay(d), loadExpensesForDay(d),
+    loadCashForDay(d), loadOrdersUnpaid(d), loadAging(d),
+    loadLast7(), loadMobileVariance(d), loadLAN()
+  ]);
 
-    async function loadDaily(d){
-      const R = await jget(`/api/reports/daily?date=${d}`);
-      $("#kpi-sales").textContent = fmt(R.salesTotal);
-      $("#kpi-expenses").textContent = fmt(R.expensesTotal);
-      $("#kpi-profit").textContent = fmt(R.profit);
-      $("#kpi-cm").textContent = fmt(R.cashMorning);
-      $("#kpi-ce").textContent = fmt(R.cashEvening);
-      const cd = R.cashDiff;
-      const el = $("#kpi-cdiff");
-      el.textContent = fmt(cd);
-      el.parentElement.classList.toggle('pos', cd >= 0);
-      el.parentElement.classList.toggle('neg', cd < 0);
-    }
+  // realtime
+  try{
+    const s = window.io();
+    s.on('data:changed', ()=> $("#refresh").click());
+  }catch(e){}
 
-    async function loadLast7(){
-      const arr = await jget('/api/reports/last7');
-      const labels = arr.map(x=>x.date.slice(5));
-      const data = arr.map(x=>x.total);
-      if(chart7){ chart7.destroy(); }
-      chart7 = new Chart($("#chart7"), {
-        type:'line',
-        data:{ labels, datasets:[{ label:'المبيعات', data, tension:.35, borderWidth:2, pointRadius:3 }] },
-        options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:{color: 'rgba(255,255,255,0.06)'}}, y:{grid:{color:'rgba(255,255,255,0.06)'}} } }
-      });
-    }
-
-    function fillTable(tbody, rows, cols){
-      tbody.innerHTML = rows.map(r => `<tr>${cols.map(c=>`<td>${c(r)??''}</td>`).join('')}</tr>`).join('');
-    }
-
-    function byMethod(rows){
-      const m = {};
-      rows.forEach(r => { const k = r.method || '—'; m[k]=(m[k]||0)+(+r.amount||0); });
-      return m;
-    }
-
-    async function loadSalesForDay(d){
-      const rows = await jget(`/api/sales?date=${d}`);
-      fillTable($("#tbl-sales tbody"), rows, [
-        r => new Date(r.date).toLocaleTimeString('ar-EG'),
-        r => fmt(r.amount),
-        r => r.method || '',
-        r => r.note || ''
-      ]);
-      // chart by method
-      const stats = byMethod(rows);
-      const labels = Object.keys(stats);
-      const data = labels.map(k=>stats[k]);
-      if(chartMethods){ chartMethods.destroy(); }
-      chartMethods = new Chart($("#chartMethods"), {
-        type:'doughnut',
-        data:{ labels, datasets:[{ data }] },
-        options:{ plugins:{legend:{position:'bottom'}}, cutout:'55%' }
-      });
-    }
-
-    async function loadExpensesForDay(d){
-      const rows = await jget(`/api/expenses?date=${d}`);
-      fillTable($("#tbl-exp tbody"), rows, [
-        r => new Date(r.date).toLocaleTimeString('ar-EG'),
-        r => fmt(r.amount),
-        r => r.category || '',
-        r => r.method || '',
-        r => r.note || ''
-      ]);
-    }
-
-    async function loadCashForDay(d){
-      const rows = await jget(`/api/cash?date=${d}`);
-      fillTable($("#tbl-cash tbody"), rows, [
-        r => new Date(r.date).toLocaleTimeString('ar-EG'),
-        r => r.shift || '',
-        r => fmt(r.total),
-        r => r.note || ''
-      ]);
-    }
-
-    async function loadCredit(){
-      const rows = await jget('/api/credit/summary');
-      fillTable($("#tbl-credit tbody"), rows, [
-        r => r.customer,
-        r => fmt(r.purchase),
-        r => fmt(r.payment),
-        r => `<b>${fmt(r.balance)}</b>`
-      ]);
-    }
-
-    async function doSearch(){
-      const q = new URLSearchParams({
-        from: $("#from").value || $("#date").value,
-        to: $("#to").value || $("#date").value,
-        method: $("#method").value,
-        min: $("#min").value,
-        max: $("#max").value,
-        q: $("#q").value
-      });
-      const res = await jget(`/api/sales/search?${q.toString()}`);
-      $("#res-count").textContent = res.count;
-      $("#res-total").textContent = fmt(res.total);
-      fillTable($("#tbl-search tbody"), res.rows, [
-        r => new Date(r.date).toLocaleString('ar-EG'),
-        r => fmt(r.amount),
-        r => r.method || '',
-        r => r.note || ''
-      ]);
-      // حدّث زر التصدير لنفس الفلتر
-      $("#doExportFilter").onclick = () => window.open(`/api/export/csv/sales-filter?${q.toString()}`,'_blank');
-    }
-
-    async function loadLAN(){
-      try{
-        const r = await jget('/api/meta/lan');
-        $("#lan").textContent = `LAN: ${r.url}`;
-      }catch{}
-    }
-
-    // ====== Realtime ======
-    function setupRealtime(dateGetter){
-      try{
-        const s = window.io();
-        const dot = $("#rt-dot");
-        s.on('connect', ()=>{ dot.style.color = '#5dd6a0'; });
-        s.on('disconnect', ()=>{ dot.style.color = '#ff6b6b'; });
-        s.on('data:changed', async (msg)=>{
-          // إعادة تحميل الأجزاء المرتبطة
-          const d = dateGetter();
-          await Promise.all([
-            loadDaily(d),
-            loadSalesForDay(d),
-            loadExpensesForDay(d),
-            loadCashForDay(d),
-            loadLast7()
-          ]);
-          await doSearch();
-        });
-      }catch(e){ console.warn('socket.io not available', e); }
-    }
-
-    // ====== Init ======
-    (async function init(){
-      const d = todayISO();
-      $("#date").value = d;
-      $("#from").value = d; $("#to").value = d;
-      setExports(d);
-
-      $("#refresh").onclick = async ()=>{
-        const dd = $("#date").value || todayISO();
-        setExports(dd);
-        await Promise.all([
-          loadDaily(dd),
-          loadSalesForDay(dd),
-          loadExpensesForDay(dd),
-          loadCashForDay(dd),
-          loadLast7(),
-          loadCredit()
-        ]);
-        await doSearch();
-      };
-
-      $("#date").addEventListener('change', ()=> {
-        const dd = $("#date").value || todayISO();
-        setExports(dd);
-      });
-
-      $("#doSearch").onclick = doSearch;
-
-      await Promise.all([
-        loadDaily(d),
-        loadSalesForDay(d),
-        loadExpensesForDay(d),
-        loadCashForDay(d),
-        loadLast7(),
-        loadCredit(),
-        loadLAN()
-      ]);
-      await doSearch();
-      setupRealtime(()=> $("#date").value || todayISO());
-    })();
-  </script>
+})();
+</script>
 </body>
 </html>
