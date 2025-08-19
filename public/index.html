@@ -1,513 +1,368 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<title>Zaad Bakery — Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="icon" href="/img/zaad-logo.jpeg">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/socket.io/socket.io.js"></script>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zaad Bakery — لوحة التحكم</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <style>
-  :root{ --brand:#7A4B2B; --accent:#CFA24A; --text:#3b3b3b; --bg:#f8f6f2; --card:#ffffff; --border:#e7ddcf; }
-  body{ background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,"Cairo",Arial,sans-serif; }
-  .hero{ background:linear-gradient(135deg,#fff 0%,#fdf9f2 100%); border:1px solid var(--border); border-radius:18px; padding:18px 20px; margin:16px 0; display:flex; align-items:center; justify-content:space-between; gap:16px; }
-  .brand{ display:flex; align-items:center; gap:12px; }
-  .brand-logo{ height:44px; width:auto; object-fit:contain; border-radius:10px; background:#fff; border:1px solid var(--border); padding:6px; }
-  .chip{ padding:6px 10px; border-radius:999px; background:#fff; border:1px solid var(--border); font-size:.9rem; color:var(--brand) }
-  .tab-card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 8px 24px rgba(122,75,43,.06); }
-  .nav-pills .nav-link{ color:var(--brand); border:1px solid var(--border); }
-  .nav-pills .nav-link.active{ background:var(--brand); color:#fff; border-color:var(--brand); }
-  .btn-primary{ background:var(--brand); border-color:var(--brand); }
-  .btn-outline-dark{ color:var(--brand); border-color:var(--brand); }
-  .form-control:focus, .form-select:focus{ border-color:var(--accent); box-shadow:0 0 0 .2rem rgba(207,162,74,.2); }
-  .denom-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px }
-  @media(max-width:768px){ .denom-grid{ grid-template-columns:repeat(3,1fr); } }
-  .gauge{ width:140px; height:140px; border-radius:50%; background:conic-gradient(var(--accent) var(--deg,0deg), #eee 0deg);
-          display:flex; align-items:center; justify-content:center; margin:auto; border:6px solid #fff; box-shadow:inset 0 0 0 6px #fff; }
-  .gauge span{ font-weight:700; color:var(--brand) }
+  :root{
+    --bg:#0b1220; --card:#121a2a; --muted:#8ea3b0; --text:#eaf2f8; --accent:#5dd6a0; --danger:#ff6b6b; --warn:#ffd166; --grid:#1a2438;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Kufi Arabic","Cairo",sans-serif}
+  header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(11,18,32,.95),rgba(11,18,32,.7) 70%,transparent);backdrop-filter: blur(6px);border-bottom:1px solid #1f2a44}
+  .container{max-width:1200px;margin-inline:auto;padding:16px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .title{font-weight:700;font-size:20px;letter-spacing:.3px}
+  .ctrls{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid #1f2a44;border-radius:16px;padding:14px}
+  .kpis{display:grid;gap:12px;grid-template-columns:repeat(6,minmax(140px,1fr))}
+  .kpi h4{margin:0 0 6px 0;font-weight:600;color:var(--muted);font-size:13px}
+  .kpi .v{font-weight:800;font-size:22px}
+  .kpi.pos{color:var(--accent)}
+  .kpi.neg{color:var(--danger)}
+  .grid{display:grid;gap:12px;grid-template-columns:2fr 1.2fr}
+  .grid-2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  .grid-3{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr}
+  .field{display:flex;gap:8px;align-items:center}
+  input,select,button{background:#0e1626;color:var(--text);border:1px solid #27314a;border-radius:10px;padding:8px 10px;font-size:14px}
+  button{cursor:pointer}
+  button.primary{background:#19324f;border-color:#29507c}
+  button.warn{background:#3b2b07;border-color:#70520c}
+  a.btn{display:inline-block;text-decoration:none}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px dashed #243151;padding:8px 6px;font-size:13px}
+  th{color:var(--muted);text-align:right}
+  tr:hover td{background:#0f1728}
+  .muted{color:var(--muted)}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid #2a3757;background:#0d1629;color:#cfe3ff;font-size:12px}
+  .flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .right{margin-inline-start:auto}
+  .sep{height:1px;background:#1f2a44;margin:10px 0}
+  canvas{max-width:100%;}
+  @media (max-width:1100px){ .grid{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(2,1fr)} }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="hero">
-    <div class="brand">
-      <img id="brandLogo" src="/img/zaad-logo.jpeg" alt="Zaad Bakery" class="brand-logo">
-      <script>
-        (function(){ const lg = document.getElementById('brandLogo'); lg.onerror=()=>{ if(lg.src.endsWith('.jpeg')) lg.src='/img/zaad-logo.jpg'; else lg.src='/img/zaad-logo.png'; }; })();
-      </script>
-      <div><div class="fw-bold">Zaad Bakery</div><div class="text-muted" style="font-size:.9rem">Simple • Clean • Elegant</div></div>
-    </div>
-    <div class="d-flex flex-wrap" style="gap:8px">
-      <span class="chip"><i class="bi bi-cash-coin me-1"></i>Cash</span>
-      <span class="chip"><i class="bi bi-cart-check me-1"></i>Sales</span>
-      <span class="chip"><i class="bi bi-credit-card-2-front me-1"></i>Expenses</span>
-      <span class="chip"><i class="bi bi-people me-1"></i>Credit</span>
-      <span class="chip"><i class="bi bi-graph-up me-1"></i>Reports</span>
-      <button class="btn btn-outline-dark" id="openQR"><i class="bi bi-qr-code"></i> Open on phone</button>
-    </div>
-  </div>
-
-  <ul class="nav nav-pills mb-3" id="tabs" style="gap:8px;">
-    <li class="nav-item"><button class="nav-link active" data-tab="sales"><i class="bi bi-cart"></i> Sales</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="cash"><i class="bi bi-cash-coin"></i> Cash</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="expenses"><i class="bi bi-credit-card-2-front"></i> Expenses</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="credit"><i class="bi bi-people"></i> Credit</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="reports"><i class="bi bi-graph-up"></i> Reports</button></li>
-  </ul>
-
-  <!-- SALES -->
-  <div class="tab-card" id="tab-sales">
-    <h5 class="mb-3">Add Sale</h5>
-    <form id="saleForm" class="row g-2">
-      <div class="col-md-3"><label class="form-label">Amount</label><input type="number" min="0" step="0.01" class="form-control" name="amount" required></div>
-      <div class="col-md-3"><label class="form-label">Payment</label>
-        <select class="form-select" name="method" required>
-          <option>Cash</option><option>Mobile Number</option><option>Buy Goods</option><option>Withdraw Cash</option>
-        </select></div>
-      <div class="col-md-3"><label class="form-label">Date</label><input type="date" class="form-control" name="date"></div>
-      <div class="col-md-3"><label class="form-label">Note</label><input class="form-control" name="note" placeholder="Optional"></div>
-      <div class="col-12 mt-2"><button class="btn btn-primary" type="submit"><i class="bi bi-save2 me-1"></i>Save</button></div>
-    </form>
-
-    <!-- Filters -->
-    <div class="alert alert-light border mt-3">
-      <div class="row g-2 align-items-end">
-        <div class="col-sm-2"><label class="form-label">Date</label><input type="date" class="form-control" id="salesDate"></div>
-        <div class="col-sm-3"><label class="form-label">Method</label>
-          <select class="form-select" id="salesFMethod">
-            <option value="">All</option><option>Cash</option><option>Mobile Number</option><option>Buy Goods</option><option>Withdraw Cash</option>
-          </select></div>
-        <div class="col-sm-2"><label class="form-label">Min</label><input type="number" class="form-control" id="salesFMin" step="0.01"></div>
-        <div class="col-sm-2"><label class="form-label">Max</label><input type="number" class="form-control" id="salesFMax" step="0.01"></div>
-        <div class="col-sm-3"><label class="form-label">Note contains</label><input class="form-control" id="salesFText" placeholder="any text"></div>
-      </div>
-      <div class="mt-2 d-flex" style="gap:8px">
-        <button class="btn btn-outline-secondary" id="loadSales"><i class="bi bi-arrow-repeat me-1"></i>Load</button>
-        <button class="btn btn-outline-success" id="exportSalesCsv"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
-        <button class="btn btn-outline-dark" id="salesClear">Clear filters</button>
+  <header>
+    <div class="container row">
+      <div class="title">لوحة التحكم — Zaad Bakery</div>
+      <div class="ctrls">
+        <div class="field">
+          <label for="date">تاريخ:</label>
+          <input type="date" id="date">
+        </div>
+        <button id="refresh" class="primary">تحديث</button>
+        <a id="export-xlsx" class="btn" href="#" target="_blank"><button>تصدير XLSX</button></a>
+        <a id="export-pdf" class="btn" href="#" target="_blank"><button>تصدير PDF</button></a>
+        <a id="export-sales" class="btn" href="#" target="_blank"><button>CSV المبيعات (اليوم)</button></a>
+        <a id="export-expenses" class="btn" href="#" target="_blank"><button>CSV المصروفات (اليوم)</button></a>
+        <a id="export-cash" class="btn" href="#" target="_blank"><button>CSV الكاش (اليوم)</button></a>
       </div>
     </div>
+  </header>
 
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead>
-        <tbody id="salesRows"></tbody>
-      </table>
-    </div>
-  </div>
+  <main class="container" style="padding-top:10px;">
 
-  <!-- CASH -->
-  <div class="tab-card d-none" id="tab-cash">
-    <h5 class="mb-3">Cash (Morning / Evening)</h5>
-    <form id="cashForm">
-      <div class="row g-2">
-        <div class="col-md-3"><label class="form-label">Shift</label><select class="form-select" name="shift"><option value="morning">Morning</option><option value="evening">Evening</option></select></div>
-        <div class="col-md-3"><label class="form-label">Date</label><input type="date" class="form-control" name="date"></div>
-        <div class="col-md-6"><label class="form-label">Note</label><input class="form-control" name="note" placeholder="Optional"></div>
+    <!-- KPIs -->
+    <section class="card">
+      <div class="kpis">
+        <div class="kpi"><h4>إجمالي المبيعات</h4><div class="v" id="kpi-sales">—</div></div>
+        <div class="kpi"><h4>إجمالي المصروفات</h4><div class="v" id="kpi-expenses">—</div></div>
+        <div class="kpi"><h4>الربح</h4><div class="v" id="kpi-profit">—</div></div>
+        <div class="kpi"><h4>كاش صباحًا</h4><div class="v" id="kpi-cm">—</div></div>
+        <div class="kpi"><h4>كاش مساءً</h4><div class="v" id="kpi-ce">—</div></div>
+        <div class="kpi"><h4>فرق الكاش</h4><div class="v" id="kpi-cdiff">—</div></div>
       </div>
-      <div class="mt-3"><div class="denom-grid" id="denoms"></div></div>
-      <div class="mt-2"><strong>Total: <span id="cashTotal">0</span></strong></div>
-      <button class="btn btn-primary mt-2" type="submit"><i class="bi bi-cash-stack me-1"></i>Save Cash</button>
-    </form>
+    </section>
 
-    <div class="alert alert-light border mt-3">
-      <div class="row g-2">
-        <div class="col-sm-4"><label class="form-label">Date</label><input type="date" class="form-control" id="cashDate"></div>
-      </div>
-      <div class="mt-2 d-flex" style="gap:8px">
-        <button class="btn btn-outline-secondary" id="loadCash"><i class="bi bi-arrow-repeat me-1"></i>Load</button>
-        <button class="btn btn-outline-success" id="exportCashCsv"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
-      </div>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Date</th><th>Shift</th><th>Total</th><th>Note</th></tr></thead>
-        <tbody id="cashRows"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- EXPENSES -->
-  <div class="tab-card d-none" id="tab-expenses">
-    <h5 class="mb-3">Add Expense</h5>
-    <form id="expForm" class="row g-2">
-      <div class="col-md-3"><label class="form-label">Amount</label><input type="number" min="0" step="0.01" class="form-control" name="amount" required></div>
-      <div class="col-md-3"><label class="form-label">Category</label><input class="form-control" name="category" placeholder="Materials, Rent..."></div>
-      <div class="col-md-3"><label class="form-label">Method</label>
-        <select class="form-select" name="method"><option>Cash</option><option>Mobile Number</option><option>Buy Goods</option><option>Withdraw Cash</option></select></div>
-      <div class="col-md-3"><label class="form-label">Date</label><input type="date" class="form-control" name="date"></div>
-      <div class="col-12"><label class="form-label">Note</label><input class="form-control" name="note" placeholder="Optional"></div>
-      <div class="col-12 mt-2"><button class="btn btn-primary" type="submit"><i class="bi bi-save2 me-1"></i>Save Expense</button></div>
-    </form>
-
-    <!-- Filters -->
-    <div class="alert alert-light border mt-3">
-      <div class="row g-2 align-items-end">
-        <div class="col-sm-2"><label class="form-label">Date</label><input type="date" class="form-control" id="expDate"></div>
-        <div class="col-sm-3"><label class="form-label">Method</label>
-          <select class="form-select" id="expFMethod">
-            <option value="">All</option><option>Cash</option><option>Mobile Number</option><option>Buy Goods</option><option>Withdraw Cash</option>
-          </select></div>
-        <div class="col-sm-3"><label class="form-label">Category / Note</label><input class="form-control" id="expFText"></div>
-        <div class="col-sm-2"><label class="form-label">Min</label><input type="number" class="form-control" id="expFMin" step="0.01"></div>
-        <div class="col-sm-2"><label class="form-label">Max</label><input type="number" class="form-control" id="expFMax" step="0.01"></div>
-      </div>
-      <div class="mt-2 d-flex" style="gap:8px">
-        <button class="btn btn-outline-secondary" id="loadExp"><i class="bi bi-arrow-repeat me-1"></i>Load</button>
-        <button class="btn btn-outline-success" id="exportExpCsv"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
-        <button class="btn btn-outline-dark" id="expClear">Clear filters</button>
-      </div>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Method</th><th>Note</th></tr></thead>
-        <tbody id="expRows"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- CREDIT -->
-  <div class="tab-card d-none" id="tab-credit">
-    <div class="row g-3">
-      <div class="col-lg-6">
-        <h5 class="mb-3">Add Credit Purchase</h5>
-        <form id="creditPurchaseForm" class="row g-2">
-          <div class="col-sm-6"><label class="form-label">Customer</label><select class="form-select" id="custSelectP" name="customer" required></select></div>
-          <div class="col-sm-6"><label class="form-label">Amount</label><input type="number" min="0" step="0.01" class="form-control" name="amount" required></div>
-          <div class="col-sm-6"><label class="form-label">Date</label><input type="date" class="form-control" name="date"></div>
-          <div class="col-sm-6"><label class="form-label">Note</label><input class="form-control" name="note" placeholder="Optional"></div>
-          <div class="col-12 mt-2"><button class="btn btn-primary" type="submit"><i class="bi bi-plus-circle me-1"></i>Add Purchase</button></div>
-        </form>
-      </div>
-      <div class="col-lg-6">
-        <h5 class="mb-3">Add Credit Payment</h5>
-        <form id="creditPaymentForm" class="row g-2">
-          <div class="col-sm-6"><label class="form-label">Customer</label><select class="form-select" id="custSelectPay" name="customer" required></select></div>
-          <div class="col-sm-6"><label class="form-label">Amount</label><input type="number" min="0" step="0.01" class="form-control" name="amount" required></div>
-          <div class="col-sm-6"><label class="form-label">Method</label>
-            <select class="form-select" name="method"><option>Cash</option><option>Mobile Number</option><option>Buy Goods</option><option>Withdraw Cash</option></select></div>
-          <div class="col-sm-6"><label class="form-label">Date</label><input type="date" class="form-control" name="date"></div>
-          <div class="col-sm-12"><label class="form-label">Note</label><input class="form-control" name="note" placeholder="Optional"></div>
-          <div class="col-12 mt-2"><button class="btn btn-success" type="submit"><i class="bi bi-check2-circle me-1"></i>Add Payment</button></div>
-        </form>
-      </div>
-    </div>
-
-    <div class="alert alert-light border mt-3">
-      <div class="row g-2 align-items-end">
-        <div class="col-sm-4"><label class="form-label">Customer</label><select class="form-select" id="creditFCustomer"><option value="">All</option></select></div>
-        <div class="col-sm-4"><label class="form-label">Type</label><select class="form-select" id="creditFType"><option value="">All</option><option value="purchase">Purchase</option><option value="payment">Payment</option></select></div>
-        <div class="col-sm-4">
-          <label class="form-label">Add new customer</label>
-          <div class="input-group">
-            <input class="form-control" id="newCustomer" placeholder="Customer name">
-            <button class="btn btn-outline-primary" id="addCustomer"><i class="bi bi-person-plus"></i></button>
-          </div>
+    <!-- Charts -->
+    <section class="grid">
+      <div class="card">
+        <div class="flex">
+          <h3 style="margin:0">مبيعات آخر 7 أيام</h3>
+          <span class="badge"><span>Realtime</span><span id="rt-dot">●</span></span>
+          <span class="right muted" id="lan"></span>
+        </div>
+        <div style="padding-top:6px">
+          <canvas id="chart7"></canvas>
         </div>
       </div>
-    </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">توزيع المبيعات حسب الوسيلة (اليوم)</h3>
+        <canvas id="chartMethods"></canvas>
+      </div>
+    </section>
 
-    <h6>Customer Balances</h6>
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Customer</th><th>Purchases</th><th>Payments</th><th>Balance</th><th>Action</th></tr></thead>
-        <tbody id="creditSummaryRows"></tbody>
-      </table>
-    </div>
-
-    <div class="mt-3" id="creditDetailsBox" style="display:none;">
-      <h6 class="mb-2">Details: <span id="creditDetailName"></span></h6>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle">
-          <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead>
-          <tbody id="creditDetailRows"></tbody>
+    <!-- Sales search -->
+    <section class="card">
+      <div class="flex">
+        <h3 style="margin:0">فلترة المبيعات</h3>
+        <button id="doSearch" class="primary right">بحث</button>
+        <button id="doExportFilter" class="warn">تصدير CSV للفلتر</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field"><label>من</label><input type="date" id="from"></div>
+        <div class="field"><label>إلى</label><input type="date" id="to"></div>
+        <div class="field">
+          <label>الطريقة</label>
+          <select id="method">
+            <option value="">All</option>
+            <option>Cash</option>
+            <option>Buy Goods</option>
+            <option>Send Money</option>
+          </select>
+        </div>
+        <div class="field"><label>أدنى</label><input type="number" id="min" placeholder="0"></div>
+        <div class="field"><label>أقصى</label><input type="number" id="max" placeholder="∞"></div>
+        <div class="field" style="flex:1"><label>كلمة</label><input type="text" id="q" placeholder="ملاحظة/كلمة"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="flex">
+        <div class="muted">عدد النتائج: <b id="res-count">0</b></div>
+        <div class="muted">الإجمالي: <b id="res-total">0</b></div>
+      </div>
+      <div style="overflow:auto;margin-top:6px">
+        <table id="tbl-search">
+          <thead><tr><th>التاريخ</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th></tr></thead>
+          <tbody></tbody>
         </table>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- REPORTS (كما هي) -->
-  <div class="tab-card d-none" id="tab-reports">
-    <div class="row g-3">
-      <div class="col-lg-4">
-        <div class="card p-3">
-          <h6 class="mb-2">Select date</h6>
-          <input type="date" class="form-control mb-2" id="repDate">
-          <button class="btn btn-outline-primary w-100 mb-2" id="loadReport"><i class="bi bi-arrow-repeat me-1"></i>Load Daily Report</button>
-          <button class="btn btn-dark w-100 mb-2" id="downloadDailyPdf"><i class="bi bi-filetype-pdf me-1"></i>Download Daily PDF</button>
-          <button class="btn btn-success w-100 mb-3" id="downloadDailyXlsx"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Download Excel (XLSX)</button>
-          <ul class="list-group">
-            <li class="list-group-item d-flex justify-content-between"><span>Sales Total</span><strong id="rSales">0</strong></li>
-            <li class="list-group-item d-flex justify-content-between"><span>Expenses Total</span><strong id="rExp">0</strong></li>
-            <li class="list-group-item d-flex justify-content-between"><span>Profit</span><strong id="rProfit">0</strong></li>
-            <li class="list-group-item d-flex justify-content-between"><span>Cash Morning</span><strong id="rCM">0</strong></li>
-            <li class="list-group-item d-flex justify-content-between"><span>Cash Evening</span><strong id="rCE">0</strong></li>
-            <li class="list-group-item d-flex justify-content-between"><span>Cash Diff</span><strong id="rCD">0</strong></li>
-          </ul>
-        </div>
-        <div class="card p-3 mt-3">
-          <h6 class="mb-2">Daily Target</h6>
-          <input type="number" class="form-control mb-2" id="dailyTarget" placeholder="e.g. 50000">
-          <div class="gauge mt-2" id="gauge" style="--deg:0deg"><span id="gaugeVal">0%</span></div>
-          <div class="text-muted mt-2 text-center" style="font-size:.9rem">Gauge shows progress towards target</div>
-        </div>
+    <!-- Today tables -->
+    <section class="grid-3">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">مبيعات اليوم</h3>
+        <table id="tbl-sales"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
       </div>
-      <div class="col-lg-8"><div class="card p-3"><h6 class="mb-3">Last 7 Days Sales</h6><canvas id="last7Chart" height="120"></canvas></div></div>
-    </div>
-  </div>
-</div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">مصروفات اليوم</h3>
+        <table id="tbl-exp"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الفئة</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">الكاش اليوم</h3>
+        <table id="tbl-cash"><thead><tr><th>الوقت</th><th>الوردية</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
 
-<!-- QR Modal -->
-<div class="modal fade" id="qrModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-qr-code me-1"></i> Open on your phone</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body text-center">
-      <div id="qrBox" class="d-flex align-items-center justify-content-center" style="min-height:240px"></div>
-      <div class="input-group mt-3"><span class="input-group-text">URL</span><input type="text" id="qrUrl" class="form-control" readonly><button class="btn btn-outline-secondary" id="copyUrl"><i class="bi bi-clipboard"></i></button></div>
-      <div class="form-text mt-2">Make sure phone & PC on same Wi-Fi.</div>
-    </div>
-  </div></div>
-</div>
+    <!-- Credit summary -->
+    <section class="card">
+      <h3 style="margin:0 0 8px 0">رصيد العملاء (ائتمان)</h3>
+      <table id="tbl-credit"><thead><tr><th>العميل</th><th>مشتريات</th><th>مدفوع</th><th>رصيد</th></tr></thead><tbody></tbody></table>
+    </section>
 
-<script>
-const fmt = n => Number(n||0).toLocaleString('en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  </main>
 
-// Tabs
-const tabs = document.querySelectorAll('#tabs .nav-link'); const views = ['sales','cash','expenses','credit','reports'];
-tabs.forEach(b=> b.onclick = ()=>{ tabs.forEach(x=>x.classList.remove('active')); b.classList.add('active'); const id=b.dataset.tab; views.forEach(v=>document.getElementById('tab-'+v).classList.toggle('d-none', v!==id)); });
+  <!-- Chart.js & Socket.io -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    const fmt = n => Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-// Denoms
-const notes = [1000,500,200,100,50,40,20,10,5,1];
-const denomsDiv = document.getElementById('denoms');
-if (denomsDiv){ notes.forEach(n=>{ const w=document.createElement('div'); w.innerHTML=`<label class="form-label">${n}</label><input type="number" min="0" value="0" class="form-control denom" data-note="${n}">`; denomsDiv.appendChild(w); }); }
-function computeCashTotal(){ let t=0; document.querySelectorAll('.denom').forEach(inp=>{ t += (+inp.dataset.note)*(+inp.value||0); }); document.getElementById('cashTotal').textContent=fmt(t); return t; }
-document.addEventListener('input', (e)=>{ if(e.target.classList.contains('denom')) computeCashTotal(); });
+    // ====== API helpers ======
+    async function jget(url){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
 
-// Fetch helpers
-async function postJSON(url, body){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function getJSON(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-function triggerDownload(url){ const a=document.createElement('a'); a.href=url; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove(); }
+    function todayISO(){
+      const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+      return d.toISOString().slice(0,10);
+    }
 
-// ===== Sales (w/ filters)
-let salesData = [];
-const salesDate = document.getElementById('salesDate');
-const salesFMethod = document.getElementById('salesFMethod');
-const salesFMin = document.getElementById('salesFMin');
-const salesFMax = document.getElementById('salesFMax');
-const salesFText = document.getElementById('salesFText');
-document.getElementById('salesClear').onclick = ()=>{ salesFMethod.value=''; salesFMin.value=''; salesFMax.value=''; salesFText.value=''; renderSales(); };
+    function setExports(d){
+      $("#export-xlsx").href = `/api/export/xlsx/daily?date=${d}`;
+      $("#export-pdf").href  = `/api/export/pdf/daily?date=${d}`;
+      $("#export-sales").href= `/api/export/csv/sales?date=${d}`;
+      $("#export-expenses").href = `/api/export/csv/expenses?date=${d}`;
+      $("#export-cash").href = `/api/export/csv/cash?date=${d}`;
+    }
 
-let savingSale=false;
-const saleForm=document.getElementById('saleForm');
-saleForm?.addEventListener('submit', async (e)=>{
-  e.preventDefault(); if (savingSale) return; savingSale=true;
-  const btn=saleForm.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.innerHTML='Saving…'; }
-  try{
-    const fd=new FormData(saleForm);
-    await postJSON('/api/sales',{ amount:+fd.get('amount'), method:fd.get('method'), note:fd.get('note')||undefined, date:fd.get('date')||undefined });
-    saleForm.reset(); loadSales();
-  } finally { savingSale=false; if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-save2 me-1"></i>Save'; } }
-});
-document.getElementById('loadSales')?.addEventListener('click', loadSales);
-document.getElementById('exportSalesCsv')?.addEventListener('click', ()=>{ const d=salesDate.value || new Date().toISOString().slice(0,10); triggerDownload('/api/export/csv/sales?date='+d); });
-[salesFMethod,salesFMin,salesFMax,salesFText].forEach(el=> el.addEventListener('input', renderSales));
+    // ====== Loaders ======
+    let chart7, chartMethods;
 
-async function loadSales(){
-  const d = salesDate.value || new Date().toISOString().slice(0,10);
-  salesData = await getJSON('/api/sales?date='+d);
-  renderSales();
-}
-function renderSales(){
-  const rows=document.getElementById('salesRows'); rows.innerHTML='';
-  const m=salesFMethod.value, min=parseFloat(salesFMin.value||''), max=parseFloat(salesFMax.value||''), txt=(salesFText.value||'').toLowerCase();
-  salesData.filter(s=>{
-    if (m && s.method!==m) return false;
-    if (!Number.isNaN(min) && (+s.amount)<min) return false;
-    if (!Number.isNaN(max) && (+s.amount)>max) return false;
-    if (txt && !((s.note||'').toLowerCase().includes(txt))) return false;
-    return true;
-  }).forEach(s=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(s.date).toLocaleString()}</td><td><strong>${fmt(s.amount)}</strong></td><td>${s.method}</td><td>${s.note||''}</td>`;
-    rows.appendChild(tr);
-  });
-}
+    async function loadDaily(d){
+      const R = await jget(`/api/reports/daily?date=${d}`);
+      $("#kpi-sales").textContent = fmt(R.salesTotal);
+      $("#kpi-expenses").textContent = fmt(R.expensesTotal);
+      $("#kpi-profit").textContent = fmt(R.profit);
+      $("#kpi-cm").textContent = fmt(R.cashMorning);
+      $("#kpi-ce").textContent = fmt(R.cashEvening);
+      const cd = R.cashDiff;
+      const el = $("#kpi-cdiff");
+      el.textContent = fmt(cd);
+      el.parentElement.classList.toggle('pos', cd >= 0);
+      el.parentElement.classList.toggle('neg', cd < 0);
+    }
 
-// ===== Cash
-const cashForm=document.getElementById('cashForm'); let savingCash=false;
-cashForm?.addEventListener('submit', async (e)=>{
-  e.preventDefault(); if(savingCash) return; savingCash=true;
-  const btn=cashForm.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.innerHTML='Saving…'; }
-  try{
-    const fd=new FormData(cashForm); const denominations={}; document.querySelectorAll('.denom').forEach(inp=>denominations[inp.dataset.note]=parseInt(inp.value||0));
-    await postJSON('/api/cash',{ shift:fd.get('shift'), note:fd.get('note')||undefined, date:fd.get('date')||undefined, denominations });
-    loadCash();
-  } finally { savingCash=false; if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-cash-stack me-1"></i>Save Cash'; } }
-});
-const cashDate=document.getElementById('cashDate');
-document.getElementById('loadCash')?.addEventListener('click', loadCash);
-document.getElementById('exportCashCsv')?.addEventListener('click', ()=>{ const d=cashDate.value || new Date().toISOString().slice(0,10); triggerDownload('/api/export/csv/cash?date='+d); });
-async function loadCash(){ const d=cashDate.value || new Date().toISOString().slice(0,10); const rows=document.getElementById('cashRows'); rows.innerHTML=''; (await getJSON('/api/cash?date='+d)).forEach(c=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${new Date(c.date).toLocaleDateString()}</td><td>${c.shift}</td><td><strong>${fmt(c.total)}</strong></td><td>${c.note||''}</td>`; rows.appendChild(tr); }); }
+    async function loadLast7(){
+      const arr = await jget('/api/reports/last7');
+      const labels = arr.map(x=>x.date.slice(5));
+      const data = arr.map(x=>x.total);
+      if(chart7){ chart7.destroy(); }
+      chart7 = new Chart($("#chart7"), {
+        type:'line',
+        data:{ labels, datasets:[{ label:'المبيعات', data, tension:.35, borderWidth:2, pointRadius:3 }] },
+        options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:{color: 'rgba(255,255,255,0.06)'}}, y:{grid:{color:'rgba(255,255,255,0.06)'}} } }
+      });
+    }
 
-// ===== Expenses (w/ filters)
-let expData=[];
-const expDate=document.getElementById('expDate');
-const expFMethod=document.getElementById('expFMethod');
-const expFText=document.getElementById('expFText');
-const expFMin=document.getElementById('expFMin');
-const expFMax=document.getElementById('expFMax');
-document.getElementById('expClear').onclick=()=>{ expFMethod.value=''; expFText.value=''; expFMin.value=''; expFMax.value=''; renderExpenses(); };
+    function fillTable(tbody, rows, cols){
+      tbody.innerHTML = rows.map(r => `<tr>${cols.map(c=>`<td>${c(r)??''}</td>`).join('')}</tr>`).join('');
+    }
 
-let savingExp=false;
-const expForm=document.getElementById('expForm');
-expForm?.addEventListener('submit', async (e)=>{
-  e.preventDefault(); if(savingExp) return; savingExp=true;
-  const btn=expForm.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.innerHTML='Saving…'; }
-  try{
-    const fd=new FormData(expForm);
-    await postJSON('/api/expenses',{ amount:+fd.get('amount'), category:fd.get('category')||undefined, method:fd.get('method')||'Cash', note:fd.get('note')||undefined, date:fd.get('date')||undefined });
-    expForm.reset(); loadExpenses();
-  } finally { savingExp=false; if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-save2 me-1"></i>Save Expense'; } }
-});
-document.getElementById('loadExp')?.addEventListener('click', loadExpenses);
-document.getElementById('exportExpCsv')?.addEventListener('click', ()=>{ const d=expDate.value || new Date().toISOString().slice(0,10); triggerDownload('/api/export/csv/expenses?date='+d); });
-[expFMethod,expFText,expFMin,expFMax].forEach(el=> el.addEventListener('input', renderExpenses));
+    function byMethod(rows){
+      const m = {};
+      rows.forEach(r => { const k = r.method || '—'; m[k]=(m[k]||0)+(+r.amount||0); });
+      return m;
+    }
 
-async function loadExpenses(){ const d=expDate.value || new Date().toISOString().slice(0,10); expData=await getJSON('/api/expenses?date='+d); renderExpenses(); }
-function renderExpenses(){
-  const rows=document.getElementById('expRows'); rows.innerHTML='';
-  const m=expFMethod.value, txt=(expFText.value||'').toLowerCase(), min=parseFloat(expFMin.value||''), max=parseFloat(expFMax.value||'');
-  expData.filter(x=>{
-    if (m && x.method!==m) return false;
-    if (txt && !((x.category||'').toLowerCase().includes(txt) || (x.note||'').toLowerCase().includes(txt))) return false;
-    if (!Number.isNaN(min) && (+x.amount)<min) return false;
-    if (!Number.isNaN(max) && (+x.amount)>max) return false;
-    return true;
-  }).forEach(x=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(x.date).toLocaleDateString()}</td><td><strong>${fmt(x.amount)}</strong></td><td>${x.category||''}</td><td>${x.method||''}</td><td>${x.note||''}</td>`;
-    rows.appendChild(tr);
-  });
-}
+    async function loadSalesForDay(d){
+      const rows = await jget(`/api/sales?date=${d}`);
+      fillTable($("#tbl-sales tbody"), rows, [
+        r => new Date(r.date).toLocaleTimeString('ar-EG'),
+        r => fmt(r.amount),
+        r => r.method || '',
+        r => r.note || ''
+      ]);
+      // chart by method
+      const stats = byMethod(rows);
+      const labels = Object.keys(stats);
+      const data = labels.map(k=>stats[k]);
+      if(chartMethods){ chartMethods.destroy(); }
+      chartMethods = new Chart($("#chartMethods"), {
+        type:'doughnut',
+        data:{ labels, datasets:[{ data }] },
+        options:{ plugins:{legend:{position:'bottom'}}, cutout:'55%' }
+      });
+    }
 
-// ===== Credit (customers + filters)
-async function refreshCustomers(){
-  const list = await getJSON('/api/credit/customers');
-  const selP=document.getElementById('custSelectP'), selPay=document.getElementById('custSelectPay'), fsel=document.getElementById('creditFCustomer');
-  [selP, selPay].forEach(sel=>{ sel.innerHTML=''; list.forEach(n=>{ const o=document.createElement('option'); o.value=o.textContent=n; sel.appendChild(o); }); });
-  fsel.innerHTML='<option value="">All</option>'; list.forEach(n=>{ const o=document.createElement('option'); o.value=o.textContent=n; fsel.appendChild(o); });
-}
-document.getElementById('addCustomer')?.addEventListener('click', async ()=>{
-  const name=document.getElementById('newCustomer').value?.trim(); if(!name) return;
-  await postJSON('/api/credit/customers',{ name }); document.getElementById('newCustomer').value=''; refreshCustomers(); loadCreditSummary();
-});
+    async function loadExpensesForDay(d){
+      const rows = await jget(`/api/expenses?date=${d}`);
+      fillTable($("#tbl-exp tbody"), rows, [
+        r => new Date(r.date).toLocaleTimeString('ar-EG'),
+        r => fmt(r.amount),
+        r => r.category || '',
+        r => r.method || '',
+        r => r.note || ''
+      ]);
+    }
 
-const creditFType=document.getElementById('creditFType'); const creditFCustomer=document.getElementById('creditFCustomer');
+    async function loadCashForDay(d){
+      const rows = await jget(`/api/cash?date=${d}`);
+      fillTable($("#tbl-cash tbody"), rows, [
+        r => new Date(r.date).toLocaleTimeString('ar-EG'),
+        r => r.shift || '',
+        r => fmt(r.total),
+        r => r.note || ''
+      ]);
+    }
 
-let savingCredP=false, savingCredPay=false;
-document.getElementById('creditPurchaseForm')?.addEventListener('submit', async (e)=>{
-  e.preventDefault(); if(savingCredP) return; savingCredP=true;
-  const btn=e.target.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.innerHTML='Saving…'; }
-  try{
-    const fd=new FormData(e.target);
-    await postJSON('/api/credit/purchase',{ customer:fd.get('customer'), amount:+fd.get('amount'), note:fd.get('note')||undefined, date:fd.get('date')||undefined });
-    e.target.reset(); loadCreditSummary();
-  } finally { savingCredP=false; if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-plus-circle me-1"></i>Add Purchase'; } }
-});
-document.getElementById('creditPaymentForm')?.addEventListener('submit', async (e)=>{
-  e.preventDefault(); if(savingCredPay) return; savingCredPay=true;
-  const btn=e.target.querySelector('button[type="submit"]'); if(btn){ btn.disabled=true; btn.innerHTML='Saving…'; }
-  try{
-    const fd=new FormData(e.target);
-    await postJSON('/api/credit/payment',{ customer:fd.get('customer'), amount:+fd.get('amount'), method:fd.get('method')||'Cash', note:fd.get('note')||undefined, date:fd.get('date')||undefined });
-    e.target.reset(); loadCreditSummary();
-  } finally { savingCredPay=false; if(btn){ btn.disabled=false; btn.innerHTML='<i class="bi bi-check2-circle me-1"></i>Add Payment'; } }
-});
+    async function loadCredit(){
+      const rows = await jget('/api/credit/summary');
+      fillTable($("#tbl-credit tbody"), rows, [
+        r => r.customer,
+        r => fmt(r.purchase),
+        r => fmt(r.payment),
+        r => `<b>${fmt(r.balance)}</b>`
+      ]);
+    }
 
-creditFType.addEventListener('change', renderCreditSummary);
-creditFCustomer.addEventListener('change', renderCreditSummary);
+    async function doSearch(){
+      const q = new URLSearchParams({
+        from: $("#from").value || $("#date").value,
+        to: $("#to").value || $("#date").value,
+        method: $("#method").value,
+        min: $("#min").value,
+        max: $("#max").value,
+        q: $("#q").value
+      });
+      const res = await jget(`/api/sales/search?${q.toString()}`);
+      $("#res-count").textContent = res.count;
+      $("#res-total").textContent = fmt(res.total);
+      fillTable($("#tbl-search tbody"), res.rows, [
+        r => new Date(r.date).toLocaleString('ar-EG'),
+        r => fmt(r.amount),
+        r => r.method || '',
+        r => r.note || ''
+      ]);
+      // حدّث زر التصدير لنفس الفلتر
+      $("#doExportFilter").onclick = () => window.open(`/api/export/csv/sales-filter?${q.toString()}`,'_blank');
+    }
 
-let creditSummary=[];
-async function loadCreditSummary(){ creditSummary = await getJSON('/api/credit/summary'); renderCreditSummary(); }
-function renderCreditSummary(){
-  const rows=document.getElementById('creditSummaryRows'); rows.innerHTML='';
-  const cust=creditFCustomer.value, type=creditFType.value;
-  const data = creditSummary.filter(c => !cust || c.customer===cust);
-  data.forEach(c=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${c.customer}</td><td>${fmt(c.purchase)}</td><td>${fmt(c.payment)}</td><td><strong>${fmt(c.balance)}</strong></td>
-      <td class="d-flex" style="gap:6px">
-        <button class="btn btn-sm btn-outline-primary viewBtn"><i class="bi bi-eye"></i></button>
-        ${c.balance>0 ? `<button class="btn btn-sm btn-success settleBtn"><i class="bi bi-cash"></i> Settle</button>` : ''}
-      </td>`;
-    tr.querySelector('.viewBtn').onclick = ()=> loadCreditDetails(c.customer, type);
-    const sb = tr.querySelector('.settleBtn');
-    if (sb) sb.onclick = async ()=>{ await postJSON('/api/credit/payment',{ customer:c.customer, amount:c.balance, method:'Cash' }); loadCreditSummary(); };
-    rows.appendChild(tr);
-  });
-}
-async function loadCreditDetails(customer, typeFilter){
-  const box=document.getElementById('creditDetailsBox'); const nameEl=document.getElementById('creditDetailName'); const rows=document.getElementById('creditDetailRows');
-  nameEl.textContent=customer; rows.innerHTML='';
-  let data = await getJSON('/api/credit?customer='+encodeURIComponent(customer));
-  if (typeFilter) data = data.filter(r=> r.type===typeFilter);
-  data.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${new Date(r.date).toLocaleString()}</td><td>${r.type}</td><td>${fmt(r.amount)}</td><td>${r.method||''}</td><td>${r.note||''}</td>`; rows.appendChild(tr); });
-  box.style.display='block';
-}
+    async function loadLAN(){
+      try{
+        const r = await jget('/api/meta/lan');
+        $("#lan").textContent = `LAN: ${r.url}`;
+      }catch{}
+    }
 
-// ===== Reports (unchanged)
-let last7Chart;
-document.getElementById('loadReport')?.addEventListener('click', loadReport);
-document.getElementById('downloadDailyPdf')?.addEventListener('click', ()=>{ const d=(document.getElementById('repDate').value || new Date().toISOString().slice(0,10)); triggerDownload('/api/export/pdf/daily?date='+d); });
-document.getElementById('downloadDailyXlsx')?.addEventListener('click', ()=>{ const d=(document.getElementById('repDate').value || new Date().toISOString().slice(0,10)); triggerDownload('/api/export/xlsx/daily?date='+d); });
-async function loadReport(){
-  const d=document.getElementById('repDate').value || new Date().toISOString().slice(0,10);
-  const rep=await getJSON('/api/reports/daily?date='+d);
-  ['rSales','rExp','rProfit','rCM','rCE','rCD'].forEach((id,i)=>{
-    const v=[rep.salesTotal,rep.expensesTotal,rep.profit,rep.cashMorning,rep.cashEvening,rep.cashDiff][i]; document.getElementById(id).textContent=fmt(v);
-  });
-  const target=parseFloat(document.getElementById('dailyTarget').value||0); let pct=0; if(target>0) pct=Math.min(100,Math.round((rep.salesTotal/target)*100));
-  const deg=Math.round((pct/100)*360); const g=document.getElementById('gauge'); const gv=document.getElementById('gaugeVal'); g.style.setProperty('--deg',deg+'deg'); gv.textContent=pct+'%';
-}
-async function loadLast7(){
-  const data=await getJSON('/api/reports/last7'); const labels=data.map(d=>d.date), vals=data.map(d=>d.total);
-  const ctx=document.getElementById('last7Chart'); if(last7Chart) last7Chart.destroy();
-  last7Chart=new Chart(ctx,{ type:'bar', data:{ labels, datasets:[{ label:'Sales', data:vals, backgroundColor:'rgba(207,162,74,0.35)', borderColor:'#7A4B2B', borderWidth:2 }] },
-    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ ticks:{ callback:v=>fmt(v) } } }, plugins:{ tooltip:{ callbacks:{ label:(c)=>' '+fmt(c.raw) } } } } });
-}
+    // ====== Realtime ======
+    function setupRealtime(dateGetter){
+      try{
+        const s = window.io();
+        const dot = $("#rt-dot");
+        s.on('connect', ()=>{ dot.style.color = '#5dd6a0'; });
+        s.on('disconnect', ()=>{ dot.style.color = '#ff6b6b'; });
+        s.on('data:changed', async (msg)=>{
+          // إعادة تحميل الأجزاء المرتبطة
+          const d = dateGetter();
+          await Promise.all([
+            loadDaily(d),
+            loadSalesForDay(d),
+            loadExpensesForDay(d),
+            loadCashForDay(d),
+            loadLast7()
+          ]);
+          await doSearch();
+        });
+      }catch(e){ console.warn('socket.io not available', e); }
+    }
 
-// ===== QR
-document.getElementById('openQR')?.addEventListener('click', async()=>{
-  const info=await getJSON('/api/meta/lan'); const url=info.url;
-  document.getElementById('qrUrl').value=url; const box=document.getElementById('qrBox'); box.innerHTML=''; new QRCode(box,{ text:url, width:220, height:220 });
-  new bootstrap.Modal(document.getElementById('qrModal')).show();
-});
-document.getElementById('copyUrl')?.addEventListener('click',()=>{ const el=document.getElementById('qrUrl'); el.select(); el.setSelectionRange(0,99999); navigator.clipboard?.writeText(el.value); });
+    // ====== Init ======
+    (async function init(){
+      const d = todayISO();
+      $("#date").value = d;
+      $("#from").value = d; $("#to").value = d;
+      setExports(d);
 
-// ===== Realtime
-const socket = io();
-socket.on('data:changed', (msg)=>{
-  switch(msg.bucket){
-    case 'sales':    loadSales(); loadReport(); loadLast7(); break;
-    case 'expenses': loadExpenses(); loadReport(); break;
-    case 'cash':     loadCash(); loadReport(); break;
-    case 'credit':   refreshCustomers(); loadCreditSummary(); break;
-  }
-});
+      $("#refresh").onclick = async ()=>{
+        const dd = $("#date").value || todayISO();
+        setExports(dd);
+        await Promise.all([
+          loadDaily(dd),
+          loadSalesForDay(dd),
+          loadExpensesForDay(dd),
+          loadCashForDay(dd),
+          loadLast7(),
+          loadCredit()
+        ]);
+        await doSearch();
+      };
 
-// ===== Init
-const todayISO=new Date().toISOString().slice(0,10);
-['salesDate','cashDate','expDate','repDate'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=todayISO; });
-refreshCustomers().then(()=> loadCreditSummary());
-loadSales(); loadCash(); loadExpenses(); loadReport(); loadLast7();
-</script>
+      $("#date").addEventListener('change', ()=> {
+        const dd = $("#date").value || todayISO();
+        setExports(dd);
+      });
+
+      $("#doSearch").onclick = doSearch;
+
+      await Promise.all([
+        loadDaily(d),
+        loadSalesForDay(d),
+        loadExpensesForDay(d),
+        loadCashForDay(d),
+        loadLast7(),
+        loadCredit(),
+        loadLAN()
+      ]);
+      await doSearch();
+      setupRealtime(()=> $("#date").value || todayISO());
+    })();
+  </script>
 </body>
 </html>
