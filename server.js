@@ -1,4 +1,4 @@
-// server.js — Zaad Bakery (Render-ready)
+// server.js — Zaad Bakery (Render-ready, fixed handlers)
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -25,7 +25,7 @@ const FILES = {
 
 // ---------- Helpers ----------
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   for (const p of Object.values(FILES)) {
     if (!fs.existsSync(p)) fs.writeFileSync(p, '');
   }
@@ -39,11 +39,9 @@ function parseToISO(input) {
   if (!input) return todayISO();
   if (typeof input === 'string') {
     if (input.includes('/')) {
-      // dd/mm/yyyy
       const [dd, mm, yyyy] = input.split('/');
       return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
     }
-    // assume already ISO or something parsable
     return input.slice(0, 10);
   }
   return todayISO(input);
@@ -65,9 +63,7 @@ async function readAll(type) {
   return raw
     .split('\n')
     .filter(Boolean)
-    .map((l) => {
-      try { return JSON.parse(l); } catch { return null; }
-    })
+    .map((l) => { try { return JSON.parse(l); } catch { return null; } })
     .filter(Boolean);
 }
 
@@ -87,7 +83,6 @@ function filterByQuery(rows, q) {
   });
 }
 
-// CSV export (بسيط)
 function toCSV(rows) {
   if (!rows.length) return 'empty\n';
   const headers = Array.from(
@@ -110,11 +105,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Basic Auth (اختياري عبر env)
+// Basic Auth اختياري من env
 function basicAuth(req, res, next) {
   const u = process.env.PUBLIC_AUTH_USER;
   const p = process.env.PUBLIC_AUTH_PASS;
-  if (!u || !p) return next(); // معطّل إن لم يوجد
+  if (!u || !p) return next();
   const hdr = req.headers.authorization || '';
   const [type, val] = hdr.split(' ');
   if (type === 'Basic' && val) {
@@ -124,62 +119,55 @@ function basicAuth(req, res, next) {
   res.set('WWW-Authenticate', 'Basic realm="Zaad Bakery"');
   return res.status(401).send('Authentication required');
 }
-
-// قد ترغب بحماية الكل:
 app.use(basicAuth);
 
 // Static
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- Socket.IO ----------
-io.on('connection', (socket) => {
-  // مجرد تسجيل
-  console.log('Realtime client connected');
-});
+io.on('connection', () => console.log('Realtime client connected'));
 
-// ---------- Routes (Add) ----------
-async function handleAdd(type, mapper) {
-  return async (req, res) => {
-    try {
-      const body = req.body || {};
-      const now = new Date();
-      const base = {
-        dateISO: parseToISO(body.date),
-        createdAt: now.toISOString(),
-      };
-      const record = Object.assign(base, mapper(body));
+// ---------- Generic add handler ----------
+const handleAdd = (type, mapper) => async (req, res) => {
+  try {
+    const body = req.body || {};
+    const now = new Date();
+    const base = {
+      dateISO: parseToISO(body.date),
+      createdAt: now.toISOString(),
+    };
+    const record = Object.assign(base, mapper(body));
+    await appendRecord(type, record);
+    io.emit('new-record', { type, record });
+    res.json({ ok: true, type, record });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+};
 
-      await appendRecord(type, record);
-
-      io.emit('new-record', { type, record });
-      res.json({ ok: true, type, record });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  };
-}
-
-// Sales
-app.post('/api/sales/add', handleAdd('sales', (b) => ({
-  amount: Number(b.amount || b.total || 0),
+// ===== Sales =====
+const addSale = handleAdd('sales', (b) => ({
+  amount: Number(b.amount || b.total || (Number(b.quantity || 1) * Number(b.unitPrice || 0)) || 0),
   method: b.method || b.payment || 'Cash',
   note: b.note || '',
-})));
-// توافق مع اسمك القديم
-app.post('/save-sale', (req, res, next) => { req.url = '/api/sales/add'; next(); }, app._router);
+}));
+app.post('/api/sales/add', addSale);
+// توافق مع المسار القديم
+app.post('/save-sale', addSale);
 
-// Expenses
-app.post('/api/expenses/add', handleAdd('expenses', (b) => ({
+// ===== Expenses =====
+const addExpense = handleAdd('expenses', (b) => ({
   item: b.item || b.name || '',
   amount: Number(b.amount || 0),
   method: b.method || b.payment || 'Cash',
   note: b.note || '',
-})));
-app.post('/save-expense', (req, res, next) => { req.url = '/api/expenses/add'; next(); }, app._router);
+}));
+app.post('/api/expenses/add', addExpense);
+app.post('/save-expense', addExpense);
 
-// Credits
-app.post('/api/credits/add', handleAdd('credits', (b) => {
+// ===== Credits =====
+const addCredit = handleAdd('credits', (b) => {
   const paid = Number(b.paid || 0);
   const amount = Number(b.amount || 0);
   return {
@@ -191,11 +179,12 @@ app.post('/api/credits/add', handleAdd('credits', (b) => {
     note: b.note || '',
     paymentDateISO: b.paymentDate ? parseToISO(b.paymentDate) : '',
   };
-}));
-app.post('/save-credit', (req, res, next) => { req.url = '/api/credits/add'; next(); }, app._router);
+});
+app.post('/api/credits/add', addCredit);
+app.post('/save-credit', addCredit);
 
-// Orders
-app.post('/api/orders/add', handleAdd('orders', (b) => {
+// ===== Orders =====
+const addOrder = handleAdd('orders', (b) => {
   const paid = Number(b.paid || 0);
   const amount = Number(b.amount || 0);
   return {
@@ -206,45 +195,41 @@ app.post('/api/orders/add', handleAdd('orders', (b) => {
     remaining: Math.max(0, amount - paid),
     note: b.note || '',
   };
-}));
-app.post('/save-order', (req, res, next) => { req.url = '/api/orders/add'; next(); }, app._router);
+});
+app.post('/api/orders/add', addOrder);
+app.post('/save-order', addOrder);
 
-// Cash (morning/evening with breakdown)
-app.post('/api/cash/add', handleAdd('cash', (b) => ({
-  session: b.session || b.time || 'morning', // morning / evening
-  breakdown: b.breakdown || {},             // {1000: x, 500: y, ...}
+// ===== Cash (morning/evening) =====
+const addCash = handleAdd('cash', (b) => ({
+  session: b.session || b.time || 'morning',
+  breakdown: b.breakdown || {},
   total: Number(b.total || 0),
   note: b.note || '',
-})));
-app.post('/save-cash', (req, res, next) => { req.url = '/api/cash/add'; next(); }, app._router);
+}));
+app.post('/api/cash/add', addCash);
+app.post('/save-cash', addCash);
 
-// ---------- Routes (List / Export) ----------
-
-// List with filters: /api/:type/list?from=YYYY-MM-DD&to=YYYY-MM-DD&method=Cash&customer=Azza
+// ---------- List / Export ----------
 app.get('/api/:type/list', async (req, res) => {
   try {
     const type = req.params.type;
     const rows = await readAll(type);
-    const filtered = filterByQuery(rows, req.query || {});
-    res.json({ ok: true, type, count: filtered.length, rows: filtered });
+    res.json({ ok: true, type, count: rows.length, rows: filterByQuery(rows, req.query || {}) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// توافق مع القديم: /load?type=sales&from=..&to=..
 app.get('/load', async (req, res) => {
   try {
     const type = (req.query.type || '').toLowerCase();
     const rows = await readAll(type);
-    const filtered = filterByQuery(rows, req.query || {});
-    res.json({ ok: true, type, count: filtered.length, rows: filtered });
+    res.json({ ok: true, type, count: rows.length, rows: filterByQuery(rows, req.query || {}) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Export CSV: /api/:type/export
 app.get('/api/:type/export', async (req, res) => {
   try {
     const type = req.params.type;
@@ -258,7 +243,6 @@ app.get('/api/:type/export', async (req, res) => {
   }
 });
 
-// توافق مع القديم: /export-csv?type=sales
 app.get('/export-csv', async (req, res) => {
   try {
     const type = (req.query.type || '').toLowerCase();
@@ -274,7 +258,6 @@ app.get('/export-csv', async (req, res) => {
 
 // ---------- Boot ----------
 ensureDataDir();
-
 server.listen(PORT, HOST, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
