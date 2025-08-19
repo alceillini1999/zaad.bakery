@@ -1,240 +1,369 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Zaad Bakery – Sales & Cash Manager</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" />
-<style>
-  :root{ --bg:#0b1220; --card:#121a2a; --muted:#8ea3b0; --text:#eaf2f8; --accent:#5dd6a0; --danger:#ff6b6b; --warn:#ffd166; }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Kufi Arabic","Cairo",sans-serif}
-  header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,rgba(11,18,32,.95),rgba(11,18,32,.7) 70%,transparent);backdrop-filter: blur(6px);border-bottom:1px solid #1f2a44}
-  .container{max-width:1250px;margin-inline:auto;padding:14px}
-  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-  .title{font-weight:800;font-size:20px}
-  .card{background:var(--card);border:1px solid #1f2a44;border-radius:16px;padding:14px}
-  .kpis{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
-  .kpi h4{margin:0 0 6px 0;font-weight:600;color:var(--muted);font-size:13px}
-  .kpi .v{font-weight:800;font-size:22px}
-  .pos{color:var(--accent)} .neg{color:var(--danger)} .muted{color:var(--muted)}
-  .grid{display:grid;gap:12px;grid-template-columns:1.8fr 1.2fr}
-  .grid-3{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr}
-  .grid-2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
-  input,select,button{background:#0e1626;color:var(--text);border:1px solid #27314a;border-radius:10px;padding:8px 10px;font-size:13px}
-  button{cursor:pointer} button.primary{background:#19324f;border-color:#29507c}
-  table{width:100%;border-collapse:collapse} th,td{border-bottom:1px dashed #243151;padding:8px 6px;font-size:13px} th{color:var(--muted);text-align:right}
-  .badge{display:inline-flex;gap:6px;border:1px solid #2a3757;border-radius:999px;padding:2px 8px;background:#0d1629}
-  canvas{max-width:100%}
-  @media(max-width:1100px){ .grid{grid-template-columns:1fr} .kpis{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:1fr} }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Zaad Bakery — Data Entry</title>
+  <link rel="icon" href="/img/zaad-logo.png" />
+  <style>
+    :root{
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --primary:#0ea5e9;
+      --primary-600:#0284c7;
+      --border:#e2e8f0;
+      --success:#16a34a;
+      --danger:#dc2626;
+    }
+    *{box-sizing:border-box} body{
+      margin:0; background:var(--bg); color:var(--text);
+      font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+    header{
+      display:flex; align-items:center; gap:14px; padding:16px 20px;
+      border-bottom:1px solid var(--border); background:var(--card); position:sticky; top:0; z-index:10;
+    }
+    header img{ width:40px; height:40px; object-fit:contain; }
+    header h1{ margin:0; font-size:18px }
+    header .sub{ color:var(--muted); font-size:13px }
+    .container{ max-width:1100px; margin:24px auto; padding:0 16px; }
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    .tab-btn{
+      border:1px solid var(--border); background:#fff; color:var(--text);
+      padding:8px 12px; border-radius:10px; cursor:pointer;
+    }
+    .tab-btn.active{ background:var(--primary); color:#fff; border-color:var(--primary); }
+    .grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+    @media (min-width: 900px){ .grid{ grid-template-columns:1fr 1fr; } }
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px;
+      box-shadow:0 1px 1px rgba(0,0,0,.03);
+    }
+    .card h3{ margin:0 0 12px 0; font-size:16px }
+    label{ display:block; font-weight:600; margin:10px 0 6px }
+    input, select, textarea{
+      width:100%; padding:10px 12px; border-radius:10px;
+      border:1px solid var(--border); background:#fff; color:var(--text);
+    }
+    textarea{ min-height:80px; resize:vertical }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+    .btn{
+      background:var(--primary); color:#fff; border:none; padding:10px 14px; border-radius:10px;
+      cursor:pointer; font-weight:600;
+    }
+    .btn:disabled{ opacity:.6; cursor:not-allowed }
+    .btn.secondary{ background:#fff; color:var(--text); border:1px solid var(--border) }
+    .hint{ color:var(--muted); font-size:12px }
+    .denoms{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px }
+    .toast{
+      position:fixed; right:16px; bottom:16px; background:#111827; color:#fff; padding:12px 14px;
+      border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.2); display:none; z-index:100;
+    }
+    .toast.ok{ background:var(--success) } .toast.err{ background:var(--danger) }
+    footer{ text-align:center; color:var(--muted); padding:24px }
+  </style>
 </head>
 <body>
-<header>
-  <div class="container row">
-    <div class="title">Zaad Bakery – لوحة التحكم</div>
-    <div style="margin-inline-start:auto" class="row">
-      <label>تاريخ: <input type="date" id="date"></label>
-      <button id="refresh" class="primary">تحديث</button>
-      <a id="export-xlsx" href="#" target="_blank"><button>تصدير XLSX</button></a>
-      <a id="export-pdf"  href="#" target="_blank"><button>تصدير PDF</button></a>
+  <header>
+    <img src="/img/zaad-logo.png" alt="Zaad Bakery Logo" />
+    <div>
+      <h1>Zaad Bakery — Sales & Cash Manager</h1>
+      <div class="sub">Light theme • English • Secure</div>
     </div>
-  </div>
-</header>
+  </header>
 
-<main class="container" style="padding-top:10px">
-
-  <!-- KPIs -->
-  <section class="card">
-    <div class="kpis">
-      <div class="kpi"><h4>مبيعات اليوم</h4><div class="v" id="kpi-sales">—</div></div>
-      <div class="kpi"><h4>مصروفات اليوم</h4><div class="v" id="kpi-exp">—</div></div>
-      <div class="kpi"><h4>الربح (مبدئي)</h4><div class="v" id="kpi-profit">—</div></div>
-      <div class="kpi"><h4>كاش صباحًا</h4><div class="v" id="kpi-cm">—</div></div>
-      <div class="kpi"><h4>كاش مساءً</h4><div class="v" id="kpi-ce">—</div></div>
-      <div class="kpi"><h4>فرق الكاش</h4><div class="v" id="kpi-cdiff">—</div></div>
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="sales">Sales</button>
+      <button class="tab-btn" data-tab="expenses">Expenses</button>
+      <button class="tab-btn" data-tab="cash">Cash Count</button>
+      <button class="tab-btn" data-tab="ledger">Mobile Money Ledger</button>
     </div>
-  </section>
 
-  <!-- Charts + Mobile ledger -->
-  <section class="grid">
-    <div class="card">
-      <div class="row"><h3 style="margin:0">مبيعات آخر 7 أيام</h3><span class="badge" id="lan"></span></div>
-      <canvas id="chart7"></canvas>
-    </div>
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">توزيع المبيعات حسب الوسيلة (اليوم)</h3>
-      <canvas id="chartMethods"></canvas>
-      <div class="row" style="margin-top:8px">
-        <span class="muted">فرق المحفظة:</span>
-        <span id="m-withdraw" class="badge">Withdraw: —</span>
-        <span id="m-buygoods" class="badge">Buy Goods: —</span>
-        <span id="m-sendmoney" class="badge">Send Money: —</span>
+    <!-- Sales -->
+    <section id="tab-sales" class="grid card">
+      <div>
+        <h3>Record a Sale</h3>
+        <div class="row">
+          <div>
+            <label>Product (optional)</label>
+            <input id="sale-product" placeholder="e.g., Croissant" />
+          </div>
+          <div>
+            <label>Payment Method</label>
+            <select id="sale-method">
+              <option>Cash</option>
+              <option>Withdraw Cash</option>
+              <option>Buy Goods</option>
+              <option>Send Money</option>
+              <option>Till No</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Quantity</label>
+            <input id="sale-qty" type="number" step="1" min="0" value="1"/>
+          </div>
+          <div>
+            <label>Unit Price</label>
+            <input id="sale-up" type="number" step="0.01" min="0" placeholder="e.g., 50.00"/>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Amount (optional)</label>
+            <input id="sale-amount" type="number" step="0.01" min="0" placeholder="Fill OR leave to auto-calc"/>
+            <div class="hint">If Amount is empty, we'll use Quantity × Unit Price.</div>
+          </div>
+          <div>
+            <label>Till Number (optional)</label>
+            <input id="sale-till" placeholder="e.g., 123456"/>
+          </div>
+        </div>
+        <label>Note</label>
+        <textarea id="sale-note" placeholder="Notes..."></textarea>
+
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button class="btn" id="btn-sale">Save Sale</button>
+          <button class="btn secondary" id="btn-sale-clear">Clear</button>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Today tables -->
-  <section class="grid-3">
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">مبيعات اليوم</h3>
-      <table id="tbl-sales"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
-    </div>
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">مصروفات اليوم</h3>
-      <table id="tbl-exp"><thead><tr><th>الوقت</th><th>المبلغ</th><th>الفئة</th><th>الطريقة</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
-    </div>
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">جرد الكاش</h3>
-      <table id="tbl-cash"><thead><tr><th>الوقت</th><th>الوردية</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead><tbody></tbody></table>
-    </div>
-  </section>
+    <!-- Expenses -->
+    <section id="tab-expenses" class="grid card" style="display:none">
+      <div>
+        <h3>Add Expense</h3>
+        <div class="row">
+          <div>
+            <label>Amount</label>
+            <input id="exp-amount" type="number" step="0.01" min="0" />
+          </div>
+          <div>
+            <label>Pay Method</label>
+            <select id="exp-method">
+              <option>Cash</option>
+              <option>Withdraw Cash</option>
+              <option>Buy Goods</option>
+              <option>Send Money</option>
+            </select>
+          </div>
+        </div>
+        <label>Category / Item</label>
+        <input id="exp-cat" placeholder="e.g., Flour" />
+        <label>Note</label>
+        <textarea id="exp-note" placeholder="Notes..."></textarea>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button class="btn" id="btn-exp">Save Expense</button>
+          <button class="btn secondary" id="btn-exp-clear">Clear</button>
+        </div>
+      </div>
+    </section>
 
-  <!-- Orders & Aging -->
-  <section class="grid-2">
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">أوامر غير مدفوعة (اليوم)</h3>
-      <table id="tbl-orders"><thead><tr><th>الوقت</th><th>العميل</th><th>الإجمالي</th><th>حالة</th></tr></thead><tbody></tbody></table>
-    </div>
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">Aging للكريدت</h3>
+    <!-- Cash Count -->
+    <section id="tab-cash" class="card" style="display:none">
+      <h3>Cash Count</h3>
       <div class="row">
-        <span class="badge" id="b0">0–7: —</span>
-        <span class="badge" id="b1">8–14: —</span>
-        <span class="badge" id="b2">15–30: —</span>
-        <span class="badge" id="b3">30+: —</span>
+        <div>
+          <label>Session</label>
+          <select id="cash-session">
+            <option>Morning</option>
+            <option>Evening</option>
+          </select>
+        </div>
+        <div>
+          <label>Date</label>
+          <input id="cash-date" type="date" />
+        </div>
       </div>
-      <table id="tbl-aging"><thead><tr><th>العميل</th><th>الرصيد</th><th>أيام</th></tr></thead><tbody></tbody></table>
-    </div>
-  </section>
 
-</main>
+      <label>Denominations (quantity of each)</label>
+      <div class="denoms">
+        <div><input type="number" min="0" id="d1000" placeholder="1000" /></div>
+        <div><input type="number" min="0" id="d500"  placeholder="500" /></div>
+        <div><input type="number" min="0" id="d200"  placeholder="200" /></div>
+        <div><input type="number" min="0" id="d100"  placeholder="100" /></div>
+        <div><input type="number" min="0" id="d50"   placeholder="50"  /></div>
+        <div><input type="number" min="0" id="d40"   placeholder="40"  /></div>
+        <div><input type="number" min="0" id="d20"   placeholder="20"  /></div>
+        <div><input type="number" min="0" id="d10"   placeholder="10"  /></div>
+        <div><input type="number" min="0" id="d5"    placeholder="5"   /></div>
+        <div><input type="number" min="0" id="d1"    placeholder="1"   /></div>
+      </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const $ = s => document.querySelector(s);
-const fmt = n => Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
-const todayISO = ()=>{ const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+      <label>Note</label>
+      <textarea id="cash-note" placeholder="Notes..."></textarea>
 
-let chart7, chartMethods;
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn" id="btn-cash">Save Cash Count</button>
+        <button class="btn secondary" id="btn-cash-clear">Clear</button>
+      </div>
+    </section>
 
-async function jget(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+    <!-- Mobile Money Ledger -->
+    <section id="tab-ledger" class="grid card" style="display:none">
+      <div>
+        <h3>Mobile Money — Ledger</h3>
+        <div class="row">
+          <div>
+            <label>Channel</label>
+            <select id="ldg-channel">
+              <option>Withdraw Cash</option>
+              <option>Buy Goods</option>
+              <option>Send Money</option>
+            </select>
+          </div>
+          <div>
+            <label>Opening Balance</label>
+            <input id="ldg-open" type="number" step="0.01" min="0" value="0"/>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Withdrawn (Outflow)</label>
+            <input id="ldg-out" type="number" step="0.01" min="0" value="0"/>
+          </div>
+          <div>
+            <label>Closing Balance (Actual)</label>
+            <input id="ldg-close" type="number" step="0.01" min="0" value="0"/>
+          </div>
+        </div>
+        <label>Note</label>
+        <textarea id="ldg-note" placeholder="Notes..."></textarea>
 
-function setExports(d){
-  $("#export-xlsx").href = `/api/export/xlsx/daily?date=${d}`;
-  $("#export-pdf").href  = `/api/export/pdf/daily?date=${d}`;
-}
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button class="btn" id="btn-ledger">Save Ledger</button>
+          <button class="btn secondary" id="btn-ledger-clear">Clear</button>
+        </div>
+        <div class="hint" style="margin-top:8px">
+          Expected closing = Opening − Outflow (sales inflow accounted in Sales tab).  
+          We’ll store variance = Actual − Expected.
+        </div>
+      </div>
+    </section>
 
-function fillTable(tbody, rows, cols){
-  tbody.innerHTML = rows.map(r=>`<tr>${cols.map(c=>`<td>${c(r)??''}</td>`).join('')}</tr>`).join('');
-}
+    <footer>© Zaad Bakery</footer>
+  </div>
 
-async function loadDaily(d){
-  const R = await jget(`/api/reports/daily?date=${d}`);
-  $("#kpi-sales").textContent = fmt(R.salesTotal);
-  $("#kpi-exp").textContent = fmt(R.expensesTotal);
-  $("#kpi-profit").textContent = fmt(R.profit);
-  $("#kpi-cm").textContent = fmt(R.cashMorning);
-  $("#kpi-ce").textContent = fmt(R.cashEvening);
-  const cd = R.cashDiff; const el=$("#kpi-cdiff");
-  el.textContent = fmt(cd); el.classList.toggle('pos', cd>=0); el.classList.toggle('neg', cd<0);
-}
-async function loadLast7(){
-  const arr = await jget('/api/reports/last7');
-  const labels = arr.map(x=>x.date.slice(5));
-  const data = arr.map(x=>x.total);
-  if(chart7) chart7.destroy();
-  chart7 = new Chart($("#chart7"), { type:'line', data:{ labels, datasets:[{ label:'المبيعات', data, tension:.35, borderWidth:2, pointRadius:3 }]}, options:{ plugins:{legend:{display:false}} } });
-}
-function byMethod(rows){ const m={}; rows.forEach(r=>{const k=r.method||'—'; m[k]=(m[k]||0)+(+r.amount||0);}); return m; }
-async function loadSalesForDay(d){
-  const rows = await jget(`/api/sales?date=${d}`);
-  fillTable($("#tbl-sales tbody"), rows, [
-    r=> new Date(r.date).toLocaleTimeString('ar-EG'),
-    r=> fmt(r.amount),
-    r=> r.method||'',
-    r=> r.note||''
-  ]);
-  const stats = byMethod(rows), labels=Object.keys(stats), data=labels.map(k=>stats[k]);
-  if(chartMethods) chartMethods.destroy();
-  chartMethods = new Chart($("#chartMethods"), { type:'doughnut', data:{ labels, datasets:[{ data }] }, options:{ plugins:{legend:{position:'bottom'}}, cutout:'55%'} });
-}
-async function loadExpensesForDay(d){
-  const rows = await jget(`/api/expenses?date=${d}`);
-  fillTable($("#tbl-exp tbody"), rows, [
-    r=> new Date(r.date).toLocaleTimeString('ar-EG'),
-    r=> fmt(r.amount),
-    r=> r.category||'',
-    r=> r.method||'',
-    r=> r.note||''
-  ]);
-}
-async function loadCashForDay(d){
-  const rows = await jget(`/api/cashcount?date=${d}`);
-  fillTable($("#tbl-cash tbody"), rows, [
-    r=> new Date(r.date).toLocaleTimeString('ar-EG'),
-    r=> r.Session||'',
-    r=> fmt(r.CashTotal),
-    r=> r.Note||''
-  ]);
-}
-async function loadOrdersUnpaid(d){
-  const rows = await jget(`/api/orders?date=${d}`);
-  const unp = rows.filter(x=>!x.IsPaid);
-  fillTable($("#tbl-orders tbody"), unp, [
-    r=> new Date(r.DateTime).toLocaleTimeString('ar-EG'),
-    r=> r.Customer||r.CustomerPhone||'-',
-    r=> fmt(r.TotalPrice),
-    r=> r.IsPaid?'مدفوع':'غير مدفوع'
-  ]);
-}
-async function loadAging(d){
-  const r = await jget(`/api/reports/aging-credit?date=${d}`);
-  $("#b0").textContent = `0–7: ${fmt(r.buckets['0-7'])}`;
-  $("#b1").textContent = `8–14: ${fmt(r.buckets['8-14'])}`;
-  $("#b2").textContent = `15–30: ${fmt(r.buckets['15-30'])}`;
-  $("#b3").textContent = `30+: ${fmt(r.buckets['30+'])}`;
-  fillTable($("#tbl-aging tbody"), r.list, [x=>x.customer, x=>fmt(x.balance), x=>x.days]);
-}
-async function loadLAN(){
-  try{ const r = await jget('/api/meta/lan'); $("#lan").textContent = r.url; }catch{}
-}
-async function loadMobileVariance(d){
-  const r = await jget(`/api/reports/reconcile?date=${d}`);
-  const v = (x)=> x==null?'—': (x===0? 'OK' : (x>0? `+${fmt(x)}` : `${fmt(x)}`));
-  $("#m-withdraw").textContent = `Withdraw: ${v((r.mobile.find(m=>m.channel==='Withdraw Cash')||{}).variance)}`;
-  $("#m-buygoods").textContent = `Buy Goods: ${v((r.mobile.find(m=>m.channel==='Buy Goods')||{}).variance)}`;
-  $("#m-sendmoney").textContent = `Send Money: ${v((r.mobile.find(m=>m.channel==='Send Money')||{}).variance)}`;
-}
+  <div id="toast" class="toast">Saved</div>
 
-(async function init(){
-  const d = todayISO();
-  $("#date").value = d;
-  setExports(d);
+  <script>
+    // Tabs
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = {
+      sales: document.getElementById('tab-sales'),
+      expenses: document.getElementById('tab-expenses'),
+      cash: document.getElementById('tab-cash'),
+      ledger: document.getElementById('tab-ledger'),
+    };
+    tabs.forEach(b => b.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      Object.values(sections).forEach(s => s.style.display = 'none');
+      sections[b.dataset.tab].style.display = b.dataset.tab === 'sales' ? 'grid' : 'block';
+    }));
 
-  $("#refresh").onclick = async ()=>{
-    const dd = $("#date").value || d;
-    setExports(dd);
-    await Promise.all([
-      loadDaily(dd), loadSalesForDay(dd), loadExpensesForDay(dd),
-      loadCashForDay(dd), loadOrdersUnpaid(dd), loadAging(dd),
-      loadLast7(), loadMobileVariance(dd), loadLAN()
-    ]);
-  };
+    // Default date for cash
+    document.getElementById('cash-date').value = new Date().toISOString().slice(0,10);
 
-  await Promise.all([
-    loadDaily(d), loadSalesForDay(d), loadExpensesForDay(d),
-    loadCashForDay(d), loadOrdersUnpaid(d), loadAging(d),
-    loadLast7(), loadMobileVariance(d), loadLAN()
-  ]);
+    // Toast
+    const toast = document.getElementById('toast');
+    function showToast(msg, ok=true){
+      toast.textContent = msg;
+      toast.className = 'toast ' + (ok ? 'ok' : 'err');
+      toast.style.display = 'block';
+      setTimeout(()=> toast.style.display='none', 2400);
+    }
 
-  // realtime
-  try{
-    const s = window.io();
-    s.on('data:changed', ()=> $("#refresh").click());
-  }catch(e){}
+    // Helpers
+    async function postJSON(url, body){
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok || data.ok === false) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+    function val(id){ return document.getElementById(id).value.trim(); }
+    function num(id){ return Number(val(id) || 0); }
 
-})();
-</script>
+    // Sales
+    document.getElementById('btn-sale').onclick = async () => {
+      try {
+        const payload = {
+          product: val('sale-product'),
+          quantity: num('sale-qty'),
+          unitPrice: num('sale-up'),
+          amount: val('sale-amount') ? num('sale-amount') : undefined,
+          method: val('sale-method'),
+          tillNumber: val('sale-till'),
+          note: val('sale-note'),
+        };
+        await postJSON('/api/sales', payload);
+        showToast('Sale saved ✓');
+      } catch(e){ showToast(e.message, false); }
+    };
+    document.getElementById('btn-sale-clear').onclick = () => {
+      ['sale-product','sale-qty','sale-up','sale-amount','sale-till','sale-note'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('sale-qty').value = 1;
+    };
+
+    // Expenses
+    document.getElementById('btn-exp').onclick = async () => {
+      try {
+        const payload = {
+          amount: num('exp-amount'),
+          category: val('exp-cat'),
+          method: val('exp-method'),
+          note: val('exp-note'),
+        };
+        await postJSON('/api/expenses', payload);
+        showToast('Expense saved ✓');
+      } catch(e){ showToast(e.message, false); }
+    };
+    document.getElementById('btn-exp-clear').onclick = () => {
+      ['exp-amount','exp-cat','exp-note'].forEach(id=>document.getElementById(id).value='');
+    };
+
+    // Cash Count
+    document.getElementById('btn-cash').onclick = async () => {
+      try {
+        const denominations = {
+          1000:num('d1000'), 500:num('d500'), 200:num('d200'), 100:num('d100'),
+          50:num('d50'), 40:num('d40'), 20:num('d20'), 10:num('d10'), 5:num('d5'), 1:num('d1'),
+        };
+        const payload = {
+          CountDate: val('cash-date'),
+          Session: val('cash-session'),
+          denominations,
+          Note: val('cash-note'),
+        };
+        await postJSON('/api/cashcount', payload);
+        showToast('Cash count saved ✓');
+      } catch(e){ showToast(e.message, false); }
+    };
+    document.getElementById('btn-cash-clear').onclick = () => {
+      ['d1000','d500','d200','d100','d50','d40','d20','d10','d5','d1','cash-note'].forEach(id=>document.getElementById(id).value='');
+    };
+
+    // Ledger
+    document.getElementById('btn-ledger').onclick = async () => {
+      try {
+        const payload = {
+          Channel: val('ldg-channel'),
+          OpeningBalance: num('ldg-open'),
+          OutflowWithdrawn: num('ldg-out'),
+          ClosingBalanceActual: num('ldg-close'),
+          Note: val('ldg-note'),
+        };
+        await postJSON('/api/mobile/ledger', payload);
+        showToast('Ledger saved ✓');
+      } catch(e){ showToast(e.message, false); }
+    };
+    document.getElementById('btn-ledger-clear').onclick = () => {
+      ['ldg-open','ldg-out','ldg-close','ldg-note'].forEach(id=>document.getElementById(id).value='0');
+    };
+  </script>
 </body>
 </html>
