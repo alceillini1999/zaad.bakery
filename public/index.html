@@ -1,535 +1,342 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Zaad Bakery — إدارة المخبز</title>
-<link rel="icon" href="/img/zaad-logo.jpeg">
-<style>
-  :root{--bg:#f7f7f9;--card:#fff;--ink:#223;--muted:#667;--brand:#2f7d32;--accent:#0ea5e9;--danger:#e11d48}
-  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-  body{margin:0;background:var(--bg);color:var(--ink)}
-  header{display:flex;gap:12px;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:2}
-  header img{width:34px;height:34px;object-fit:contain}
-  header h1{font-size:18px;margin:0}
-  nav{display:flex;flex-wrap:wrap;gap:8px;margin-inline-start:auto}
-  nav button{border:1px solid #e5e7eb;background:#fff;padding:8px 10px;border-radius:8px;cursor:pointer}
-  nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
-  main{max-width:1100px;margin:16px auto;padding:0 12px 40px}
-  .card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px}
-  h2{font-size:18px;margin-top:0}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-  label{font-size:13px;color:var(--muted)}
-  input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:#fff}
-  textarea{min-height:70px;resize:vertical}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .btn{padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
-  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-  .btn.accent{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.ghost{background:#fff}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{border-bottom:1px solid #eee;padding:8px;text-align:start}
-  tfoot td{font-weight:700}
-  .muted{color:var(--muted)}
-  .hidden{display:none}
-  .ok{color:var(--brand);font-weight:600}
-  .toast{position:fixed;inset-inline:0;bottom:16px;display:flex;justify-content:center;z-index:3}
-  .toast>div{background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:.9}
-  .filters{display:flex;flex-wrap:wrap;gap:8px}
-  .kash-grid{display:grid;grid-template-columns:repeat(5,minmax(80px,1fr));gap:8px}
-  @media (max-width:640px){.kash-grid{grid-template-columns:repeat(3,minmax(80px,1fr));}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zaad Bakery — Sales & Cash Manager</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom -->
+  <link href="/style.css" rel="stylesheet">
 </head>
 <body>
-<header>
-  <img src="/img/zaad-logo.jpeg" alt="Zaad" onerror="this.src='/img/zaad-logo.png'">
-  <h1>Zaad Bakery — إدارة المخبز</h1>
-  <nav id="tabs">
-    <button data-tab="sales" class="active">المبيعات</button>
-    <button data-tab="expenses">المصروفات</button>
-    <button data-tab="credit">الكريديت</button>
-    <button data-tab="orders">الأوردرات</button>
-    <button data-tab="cash">الكاش</button>
-    <button data-tab="reports">التقارير</button>
+  <!-- Topbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <img src="/img/zaad-logo.jpeg" alt="Zaad" width="36" height="36" class="rounded">
+        <span class="fw-bold">Zaad Bakery</span>
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <button id="btnShare" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code"></i> Share</button>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="themeSwitch">
+          <label class="form-check-label small" for="themeSwitch">Dark</label>
+        </div>
+      </div>
+    </div>
   </nav>
-</header>
 
-<main>
-  <!-- المبيعات -->
-  <section id="sales" class="tab card">
-    <h2>تسجيل بيع</h2>
-    <div class="grid">
-      <div><label>المنتج (اختياري)</label><input id="saleProduct" placeholder="مثال: كرواسون"></div>
-      <div><label>طريقة الدفع</label>
-        <select id="saleMethod">
-          <option>Cash</option><option>Till No</option><option>Withdraw</option><option>Send Money</option>
-        </select>
+  <main class="py-4">
+    <div class="container">
+
+      <!-- Tabs -->
+      <ul class="nav nav-pills brand-pills mb-4" id="mainTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabSales" type="button"><i class="bi bi-cash-coin"></i> Sales</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabExpenses" type="button"><i class="bi bi-receipt"></i> Expenses</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCredit" type="button"><i class="bi bi-people"></i> Credit</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabOrders" type="button"><i class="bi bi-bag-check"></i> Orders</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCash" type="button"><i class="bi bi-cash-stack"></i> Cash Count</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports" type="button"><i class="bi bi-graph-up"></i> Reports</button></li>
+      </ul>
+
+      <div class="tab-content">
+
+        <!-- SALES -->
+        <section class="tab-pane fade show active" id="tabSales">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
+                <div class="card-body">
+                  <form id="formSale" class="vstack gap-3">
+                    <div class="row g-2">
+                      <div class="col-7">
+                        <label class="form-label">Product (optional)</label>
+                        <input class="form-control" name="product" placeholder="e.g., Croissant">
+                      </div>
+                      <div class="col-5">
+                        <label class="form-label">Payment</label>
+                        <select class="form-select" name="method">
+                          <option>Cash</option>
+                          <option>Till No</option>
+                          <option>Withdrawal</option>
+                          <option>Send Money</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="row g-2">
+                      <div class="col-4">
+                        <label class="form-label">Qty</label>
+                        <input class="form-control" name="quantity" value="1" type="number" min="1" step="1">
+                      </div>
+                      <div class="col-4">
+                        <label class="form-label">Unit Price</label>
+                        <input class="form-control" name="unitPrice" placeholder="0.00" type="number" min="0" step="0.01">
+                      </div>
+                      <div class="col-4">
+                        <label class="form-label">Amount</label>
+                        <input class="form-control" name="amount" placeholder="auto" type="number" min="0" step="0.01">
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="form-label">Till Number (optional)</label>
+                      <input class="form-control" name="tillNumber" placeholder="e.g., 123456">
+                    </div>
+
+                    <div>
+                      <label class="form-label">Note</label>
+                      <textarea class="form-control" rows="2" name="note" placeholder="Notes…"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Sale</button>
+                      <button class="btn btn-outline-secondary" type="reset">Clear</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                  <span class="fw-semibold">Sales — Today</span>
+                  <div class="d-flex gap-2">
+                    <input type="date" class="form-control form-control-sm" id="salesFrom">
+                    <input type="date" class="form-control form-control-sm" id="salesTo">
+                    <select id="salesMethod" class="form-select form-select-sm">
+                      <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
+                    </select>
+                    <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                    <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">Unit</th><th class="text-end">Amount</th><th>Method</th><th>Note</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tblSalesBody"><tr><td colspan="7" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- EXPENSES -->
+        <section class="tab-pane fade" id="tabExpenses">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Expense</div>
+                <div class="card-body">
+                  <form id="formExpense" class="vstack gap-3">
+                    <div>
+                      <label class="form-label">Item</label>
+                      <input class="form-control" name="item" placeholder="e.g., Flour">
+                    </div>
+                    <div class="row g-2">
+                      <div class="col">
+                        <label class="form-label">Amount</label>
+                        <input class="form-control" name="amount" type="number" min="0" step="0.01">
+                      </div>
+                      <div class="col">
+                        <label class="form-label">Payment</label>
+                        <select class="form-select" name="method">
+                          <option>Cash</option><option>Withdrawal</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="form-label">Note</label>
+                      <textarea class="form-control" name="note" rows="2"></textarea>
+                    </div>
+                    <div class="d-grid">
+                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Expense</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold">Expenses</div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Date</th><th>Item</th><th class="text-end">Amount</th><th>Method</th><th>Note</th></tr></thead>
+                    <tbody id="tblExpensesBody"><tr><td colspan="5" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CREDIT -->
+        <section class="tab-pane fade" id="tabCredit">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Credit</div>
+                <div class="card-body">
+                  <form id="formCredit" class="vstack gap-3">
+                    <div>
+                      <label class="form-label">Customer</label>
+                      <input class="form-control" list="dlCustomers" name="customer" placeholder="Select / type…">
+                      <datalist id="dlCustomers">
+                        <option>Bakkal</option><option>Azza</option><option>Habib</option><option>Snack attack</option>
+                        <option>Crave</option><option>Popa tea</option><option>Chopit</option><option>Freez</option><option>Malaki</option>
+                      </datalist>
+                    </div>
+                    <div>
+                      <label class="form-label">Item</label>
+                      <input class="form-control" name="item" placeholder="e.g., Box">
+                    </div>
+                    <div class="row g-2">
+                      <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
+                      <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
+                    </div>
+                    <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold">Credit</div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Date</th><th>Customer</th><th>Item</th><th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Note</th></tr></thead>
+                    <tbody id="tblCreditBody"><tr><td colspan="7" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ORDERS -->
+        <section class="tab-pane fade" id="tabOrders">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Order</div>
+                <div class="card-body">
+                  <form id="formOrder" class="vstack gap-3">
+                    <div><label class="form-label">Client Phone</label><input class="form-control" name="phone" placeholder="+254…"></div>
+                    <div><label class="form-label">Item</label><input class="form-control" name="item"></div>
+                    <div class="row g-2">
+                      <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
+                      <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
+                    </div>
+                    <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold">Orders</div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Date</th><th>Phone</th><th>Item</th><th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Note</th></tr></thead>
+                    <tbody id="tblOrdersBody"><tr><td colspan="7" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CASH COUNT -->
+        <section class="tab-pane fade" id="tabCash">
+          <div class="row g-4">
+            <div class="col-lg-5">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-cash"></i> Cash Count</div>
+                <div class="card-body">
+                  <form id="formCash" class="vstack gap-3">
+                    <div class="d-flex gap-3">
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="morning" checked> <label class="form-check-label">Morning</label></div>
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="evening"> <label class="form-check-label">Evening</label></div>
+                    </div>
+                    <div class="row g-2" id="denoms"></div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong>Total:</strong>
+                      <span class="fs-5" id="cashTotal">0.00</span>
+                    </div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Count</button></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-7">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold">Cash History</div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Date</th><th>Session</th><th class="text-end">Total</th><th>Note</th></tr></thead>
+                    <tbody id="tblCashBody"><tr><td colspan="4" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section class="tab-pane fade" id="tabReports">
+          <div class="card mb-4">
+            <div class="card-header bg-white fw-semibold d-flex flex-wrap gap-2 align-items-center">
+              <span>Filters</span>
+              <input type="date" class="form-control form-control-sm" id="repFrom">
+              <input type="date" class="form-control form-control-sm" id="repTo">
+              <button id="btnRunReport" class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i> Run</button>
+            </div>
+            <div class="card-body">
+              <div class="row g-3" id="repCards">
+                <!-- cards injected -->
+              </div>
+            </div>
+          </div>
+        </section>
+
       </div>
-      <div><label>الكمية</label><input id="saleQty" type="number" value="1" min="1"></div>
-      <div><label>سعر الوحدة</label><input id="saleUnit" type="number" step="0.01" placeholder="مثال: 50.00"></div>
-      <div><label>المبلغ (اتركه فاضي للحساب التلقائي)</label><input id="saleAmount" type="number" step="0.01"></div>
-      <div><label>رقم Till (اختياري)</label><input id="saleTill" placeholder="123456"></div>
-      <div style="grid-column:1/-1"><label>ملاحظة</label><textarea id="saleNote" placeholder="ملاحظات..."></textarea></div>
     </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn primary" id="btnSaveSale">حفظ البيع</button>
-      <button class="btn ghost" id="btnClearSale">تفريغ</button>
-    </div>
+  </main>
 
-    <div class="card" style="margin-top:16px">
-      <div class="row filters">
-        <div><label>من</label><input id="saleFrom" type="date"></div>
-        <div><label>إلى</label><input id="saleTo" type="date"></div>
-        <div><label>طريقة</label>
-          <select id="saleFilterMethod"><option value="">الكل</option><option>Cash</option><option>Till No</option><option>Withdraw</option><option>Send Money</option></select>
-        </div>
-        <div><button class="btn" id="btnLoadSales">تحميل</button>
-            <a class="btn accent" id="btnExportSales" href="#">تصدير CSV</a></div>
-      </div>
-      <div class="muted" style="margin-top:8px">التحديث لحظي عند وصول عمليات جديدة</div>
-      <div style="overflow:auto;margin-top:8px">
-        <table id="tblSales"><thead><tr>
-          <th>التاريخ</th><th>المنتج</th><th>الكمية</th><th>سعر</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th>
-        </tr></thead><tbody></tbody><tfoot><tr><td colspan="4">الإجمالي</td><td id="salesTotal">0</td><td colspan="2"></td></tr></tfoot></table>
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body"><i class="bi bi-check2-circle"></i> Saved successfully.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- المصروفات -->
-  <section id="expenses" class="tab card hidden">
-    <h2>تسجيل مصروف</h2>
-    <div class="grid">
-      <div><label>اسم الشيء المشتَرى</label><input id="expItem" placeholder="دقيق، سكر…"></div>
-      <div><label>السعر</label><input id="expAmount" type="number" step="0.01"></div>
-      <div><label>طريقة الدفع</label>
-        <select id="expMethod"><option>Cash</option><option>Withdraw</option></select>
-      </div>
-      <div style="grid-column:1/-1"><label>ملاحظة</label><textarea id="expNote"></textarea></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn primary" id="btnSaveExp">حفظ مصروف</button>
-      <button class="btn ghost" id="btnClearExp">تفريغ</button>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="row filters">
-        <div><label>من</label><input id="expFrom" type="date"></div>
-        <div><label>إلى</label><input id="expTo" type="date"></div>
-        <div><label>طريقة</label>
-          <select id="expFilterMethod"><option value="">الكل</option><option>Cash</option><option>Withdraw</option></select>
-        </div>
-        <div><button class="btn" id="btnLoadExp">تحميل</button>
-            <a class="btn accent" id="btnExportExp" href="#">تصدير CSV</a></div>
-      </div>
-      <div style="overflow:auto;margin-top:8px">
-        <table id="tblExp"><thead><tr>
-          <th>التاريخ</th><th>المنتج</th><th>المبلغ</th><th>الطريقة</th><th>ملاحظة</th>
-        </tr></thead><tbody></tbody><tfoot><tr><td colspan="2">الإجمالي</td><td id="expTotal">0</td><td colspan="2"></td></tr></tfoot></table>
-      </div>
-    </div>
-  </section>
-
-  <!-- الكريديت -->
-  <section id="credit" class="tab card hidden">
-    <h2>تسجيل كريديت</h2>
-    <div class="grid">
-      <div><label>العميل</label>
-        <select id="crCustomer">
-          <option>Bakkal</option><option>Habib</option><option>Snack attack</option><option>Azza</option>
-          <option>Freez</option><option>Malaki</option><option>Crave</option><option>Popa tea</option><option>Chopit</option>
-        </select>
-      </div>
-      <div><label>المنتج</label><input id="crItem" placeholder="اسم المنتج"></div>
-      <div><label>المبلغ</label><input id="crAmount" type="number" step="0.01"></div>
-      <div><label>المدفوع الآن</label><input id="crPaid" type="number" step="0.01" value="0"></div>
-      <div style="grid-column:1/-1"><label>ملاحظة</label><textarea id="crNote"></textarea></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn primary" id="btnSaveCr">حفظ كريديت</button>
-      <button class="btn ghost" id="btnClearCr">تفريغ</button>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="row filters">
-        <div><label>من</label><input id="crFrom" type="date"></div>
-        <div><label>إلى</label><input id="crTo" type="date"></div>
-        <div><label>عميل</label>
-          <input list="crNames" id="crFilterName" placeholder="الكل">
-          <datalist id="crNames">
-            <option>Bakkal</option><option>Habib</option><option>Snack attack</option><option>Azza</option>
-            <option>Freez</option><option>Malaki</option><option>Crave</option><option>Popa tea</option><option>Chopit</option>
-          </datalist>
-        </div>
-        <div><button class="btn" id="btnLoadCr">تحميل</button>
-            <a class="btn accent" id="btnExportCr" href="#">تصدير CSV</a></div>
-      </div>
-      <div style="overflow:auto;margin-top:8px">
-        <table id="tblCr"><thead><tr>
-          <th>التاريخ</th><th>العميل</th><th>المنتج</th><th>المبلغ</th><th>المدفوع</th><th>المتبقي</th><th>ملاحظة</th>
-        </tr></thead><tbody></tbody><tfoot><tr><td colspan="3">الإجمالي</td><td id="crTotal">0</td><td id="crPaidTotal">0</td><td id="crRemainTotal">0</td><td></td></tr></tfoot></table>
-      </div>
-    </div>
-  </section>
-
-  <!-- الأوردرات -->
-  <section id="orders" class="tab card hidden">
-    <h2>تسجيل أوردر</h2>
-    <div class="grid">
-      <div><label>رقم العميل</label><input id="orPhone" placeholder="07xxxxxxxx"></div>
-      <div><label>المنتج</label><input id="orItem"></div>
-      <div><label>التكلفة</label><input id="orAmount" type="number" step="0.01"></div>
-      <div><label>المدفوع الآن</label><input id="orPaid" type="number" step="0.01" value="0"></div>
-      <div style="grid-column:1/-1"><label>ملاحظة</label><textarea id="orNote"></textarea></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn primary" id="btnSaveOr">حفظ أوردر</button>
-      <button class="btn ghost" id="btnClearOr">تفريغ</button>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="row filters">
-        <div><label>من</label><input id="orFrom" type="date"></div>
-        <div><label>إلى</label><input id="orTo" type="date"></div>
-        <div><button class="btn" id="btnLoadOr">تحميل</button>
-            <a class="btn accent" id="btnExportOr" href="#">تصدير CSV</a></div>
-      </div>
-      <div style="overflow:auto;margin-top:8px">
-        <table id="tblOr"><thead><tr>
-          <th>التاريخ</th><th>الهاتف</th><th>المنتج</th><th>المبلغ</th><th>المدفوع</th><th>المتبقي</th><th>ملاحظة</th>
-        </tr></thead><tbody></tbody><tfoot><tr><td colspan="3">الإجمالي</td><td id="orTotal">0</td><td id="orPaidTotal">0</td><td id="orRemainTotal">0</td><td></td></tr></tfoot></table>
-      </div>
-    </div>
-  </section>
-
-  <!-- الكاش -->
-  <section id="cash" class="tab card hidden">
-    <h2>تسجيل الكاش</h2>
-    <div class="grid">
-      <div><label>الجلسة</label>
-        <select id="cashSession"><option value="morning">الصباح</option><option value="evening">المساء</option><option value="eod">سحب نهاية اليوم</option></select>
-      </div>
-      <div style="grid-column:1/-1"><label>عدّ الفئات</label>
-        <div class="kash-grid" id="cashBreakdown"></div>
-      </div>
-      <div><label>الإجمالي</label><input id="cashTotal" type="number" step="0.01" readonly></div>
-      <div style="grid-column:1/-1"><label>ملاحظة</label><textarea id="cashNote"></textarea></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn primary" id="btnSaveCash">حفظ الكاش</button>
-      <button class="btn ghost" id="btnClearCash">تفريغ</button>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="row filters">
-        <div><label>من</label><input id="cashFrom" type="date"></div>
-        <div><label>إلى</label><input id="cashTo" type="date"></div>
-        <div><label>الجلسة</label>
-          <select id="cashFilterSession"><option value="">الكل</option><option value="morning">الصباح</option><option value="evening">المساء</option><option value="eod">سحب نهاية اليوم</option></select>
-        </div>
-        <div><button class="btn" id="btnLoadCash">تحميل</button>
-            <a class="btn accent" id="btnExportCash" href="#">تصدير CSV</a></div>
-      </div>
-      <div style="overflow:auto;margin-top:8px">
-        <table id="tblCash"><thead><tr>
-          <th>التاريخ</th><th>الجلسة</th><th>الإجمالي</th><th>ملاحظة</th>
-        </tr></thead><tbody></tbody><tfoot><tr><td colspan="2">الإجمالي</td><td id="cashTotalSum">0</td><td></td></tr></tfoot></table>
-      </div>
-    </div>
-  </section>
-
-  <!-- التقارير -->
-  <section id="reports" class="tab card hidden">
-    <h2>التقرير اليومي</h2>
-    <div class="row filters">
-      <div><label>من</label><input id="repFrom" type="date"></div>
-      <div><label>إلى</label><input id="repTo" type="date"></div>
-      <div><button class="btn accent" id="btnRunReport">تحديث التقرير</button></div>
-    </div>
-
-    <div id="repBox" class="card" style="margin-top:12px">
-      <div class="grid">
-        <div><b>مبيعات كاش:</b> <span id="rSalesCash">0</span></div>
-        <div><b>Till No:</b> <span id="rSalesTill">0</span></div>
-        <div><b>Withdraw:</b> <span id="rSalesWith">0</span></div>
-        <div><b>Send Money:</b> <span id="rSalesSend">0</span></div>
-        <div><b>إجمالي المصروفات:</b> <span id="rExp">0</span></div>
-        <div><b>إجمالي الكريديت:</b> <span id="rCr">0</span></div>
-        <div><b>إجمالي الأوردرات:</b> <span id="rOr">0</span></div>
-        <div><b>كاش الصباح:</b> <span id="rMorning">0</span></div>
-        <div><b>كاش المساء:</b> <span id="rEvening">0</span></div>
-        <div><b>سحوبات نهاية اليوم:</b> <span id="rEod">0</span></div>
-      </div>
-      <hr>
-      <div class="grid">
-        <div><b>المتوقّع مساءً = صباح + مبيعات كاش − مصروفات:</b> <span id="rExpected">0</span></div>
-        <div><b>الفرق = المتوقّع − كاش المساء:</b> <span id="rDiff">0</span></div>
-      </div>
-    </div>
-  </section>
-</main>
-
-<div class="toast hidden" id="toast"><div id="toastMsg"></div></div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const api = {
-  add: {
-    sales: '/api/sales/add',
-    expenses: '/api/expenses/add',
-    credits: '/api/credits/add',
-    orders: '/api/orders/add',
-    cash: '/api/cash/add',
-  },
-  list: (type, q='') => `/api/${type}/list${q}`,
-  export: (type, q='') => `/api/${type}/export${q}`,
-};
-
-const denom = [1000,500,200,100,50,40,20,10,5,1];
-
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-function toDMY(d){ const t=new Date(d); return `${String(t.getDate()).padStart(2,'0')}/${String(t.getMonth()+1).padStart(2,'0')}/${t.getFullYear()}`; }
-function qs(s){ return document.querySelector(s); }
-function qsa(s){ return Array.from(document.querySelectorAll(s)); }
-function showToast(msg){ const t=qs('#toast'); qs('#toastMsg').textContent=msg; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),1400); }
-function sum(arr, key){ return arr.reduce((a,b)=>a+Number(b[key]||0),0); }
-
-function params(obj){
-  const u=new URLSearchParams();
-  Object.entries(obj).forEach(([k,v])=>{ if(v!=='' && v!=null) u.append(k,v); });
-  return `?${u.toString()}`;
-}
-
-async function postJSON(url, data){
-  const r = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function getJSON(url){
-  const r = await fetch(url);
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-// Tabs
-qsa('#tabs button').forEach(b=>{
-  b.onclick = ()=>{
-    qsa('#tabs button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    qsa('main').scrollTop = 0;
-    qsa('.tab.card').forEach(s=>s.classList.add('hidden'));
-    qs('#'+b.dataset.tab).classList.remove('hidden');
-  };
-});
-
-// Defaults
-['saleFrom','saleTo','expFrom','expTo','crFrom','crTo','orFrom','orTo','cashFrom','cashTo','repFrom','repTo'].forEach(id=>{
-  const el=qs('#'+id); if(el) el.value=todayISO();
-});
-
-// Build cash grid
-const cashGrid = qs('#cashBreakdown');
-denom.forEach(v=>{
-  const wrap=document.createElement('div');
-  wrap.innerHTML=`<label>${v}</label><input type="number" min="0" value="0" data-denom="${v}">`;
-  cashGrid.appendChild(wrap);
-});
-function recalcCash(){
-  let total=0;
-  qsa('#cashBreakdown input').forEach(i=>{ total += Number(i.value||0)*Number(i.dataset.denom); });
-  qs('#cashTotal').value = total.toFixed(2);
-}
-cashGrid.addEventListener('input',recalcCash);
-
-// ---- SALES
-qs('#btnSaveSale').onclick = async ()=>{
-  const qty=Number(qs('#saleQty').value||1);
-  const unit=Number(qs('#saleUnit').value||0);
-  let amount=qs('#saleAmount').value? Number(qs('#saleAmount').value): (qty*unit);
-  const payload={
-    product:qs('#saleProduct').value||'',
-    method:qs('#saleMethod').value,
-    quantity:qty, unitPrice:unit, amount, note:qs('#saleNote').value||'', till:qs('#saleTill').value||'',
-    date: toDMY(new Date())
-  };
-  await postJSON(api.add.sales, payload);
-  showToast('تم حفظ البيع ✓');
-  qs('#saleAmount').value=''; qs('#saleNote').value=''; qs('#saleProduct').value=''; qs('#saleTill').value='';
-};
-qs('#btnClearSale').onclick=()=>{['saleProduct','saleUnit','saleAmount','saleNote','saleTill'].forEach(id=>qs('#'+id).value=''); qs('#saleQty').value=1;};
-
-async function loadSales(){
-  const q=params({from:qs('#saleFrom').value,to:qs('#saleTo').value,method:qs('#saleFilterMethod').value});
-  const {rows}=await getJSON(api.list('sales',q));
-  const tbody=qs('#tblSales tbody'); tbody.innerHTML='';
-  let total=0;
-  rows.forEach(r=>{
-    total+=Number(r.amount||0);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.dateISO||''}</td><td>${r.product||''}</td><td>${r.quantity||''}</td><td>${r.unitPrice||''}</td><td>${Number(r.amount||0).toFixed(2)}</td><td>${r.method||''}</td><td>${r.note||''}</td>`;
-    tbody.appendChild(tr);
-  });
-  qs('#salesTotal').textContent=total.toFixed(2);
-}
-qs('#btnLoadSales').onclick=loadSales;
-qs('#btnExportSales').onclick=(e)=>{e.preventDefault(); const q=params({from:qs('#saleFrom').value,to:qs('#saleTo').value,method:qs('#saleFilterMethod').value}); location.href=api.export('sales',q);};
-
-// ---- EXPENSES
-qs('#btnSaveExp').onclick = async ()=>{
-  const payload={ item:qs('#expItem').value||'', amount:Number(qs('#expAmount').value||0), method:qs('#expMethod').value, note:qs('#expNote').value||'', date: toDMY(new Date()) };
-  await postJSON(api.add.expenses, payload); showToast('تم حفظ المصروف ✓'); ['expItem','expAmount','expNote'].forEach(id=>qs('#'+id).value='');
-};
-qs('#btnClearExp').onclick=()=>{['expItem','expAmount','expNote'].forEach(id=>qs('#'+id).value='');};
-
-async function loadExp(){
-  const q=params({from:qs('#expFrom').value,to:qs('#expTo').value,method:qs('#expFilterMethod').value});
-  const {rows}=await getJSON(api.list('expenses',q));
-  const tbody=qs('#tblExp tbody'); tbody.innerHTML='';
-  let total=0;
-  rows.forEach(r=>{
-    total+=Number(r.amount||0);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.dateISO||''}</td><td>${r.item||''}</td><td>${Number(r.amount||0).toFixed(2)}</td><td>${r.method||''}</td><td>${r.note||''}</td>`;
-    tbody.appendChild(tr);
-  });
-  qs('#expTotal').textContent=total.toFixed(2);
-}
-qs('#btnLoadExp').onclick=loadExp;
-qs('#btnExportExp').onclick=(e)=>{e.preventDefault(); const q=params({from:qs('#expFrom').value,to:qs('#expTo').value,method:qs('#expFilterMethod').value}); location.href=api.export('expenses',q);};
-
-// ---- CREDIT
-qs('#btnSaveCr').onclick = async ()=>{
-  const payload={ customer:qs('#crCustomer').value, item:qs('#crItem').value||'', amount:Number(qs('#crAmount').value||0), paid:Number(qs('#crPaid').value||0), note:qs('#crNote').value||'', date: toDMY(new Date()) };
-  await postJSON(api.add.credits, payload); showToast('تم حفظ الكريديت ✓'); ['crItem','crAmount','crPaid','crNote'].forEach(id=>qs('#'+id).value=id==='crPaid'?'0':'');
-};
-qs('#btnClearCr').onclick=()=>{['crItem','crAmount','crPaid','crNote'].forEach(id=>qs('#'+id).value=id==='crPaid'?'0':'');};
-
-async function loadCr(){
-  const name = (qs('#crFilterName').value||'').trim();
-  const q=params({from:qs('#crFrom').value,to:qs('#crTo').value,customer:name||''});
-  const {rows}=await getJSON(api.list('credits',q));
-  const tbody=qs('#tblCr tbody'); tbody.innerHTML='';
-  let t=0, p=0, rem=0;
-  rows.forEach(r=>{
-    t+=Number(r.amount||0); p+=Number(r.paid||0); rem+=Number(r.remaining||0);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.dateISO||''}</td><td>${r.customer||''}</td><td>${r.item||''}</td><td>${Number(r.amount||0).toFixed(2)}</td><td>${Number(r.paid||0).toFixed(2)}</td><td>${Number(r.remaining||0).toFixed(2)}</td><td>${r.note||''}</td>`;
-    tbody.appendChild(tr);
-  });
-  qs('#crTotal').textContent=t.toFixed(2);
-  qs('#crPaidTotal').textContent=p.toFixed(2);
-  qs('#crRemainTotal').textContent=rem.toFixed(2);
-}
-qs('#btnLoadCr').onclick=loadCr;
-qs('#btnExportCr').onclick=(e)=>{e.preventDefault(); const name=(qs('#crFilterName').value||'').trim(); const q=params({from:qs('#crFrom').value,to:qs('#crTo').value,customer:name||''}); location.href=api.export('credits',q);};
-
-// ---- ORDERS
-qs('#btnSaveOr').onclick = async ()=>{
-  const payload={ phone:qs('#orPhone').value||'', item:qs('#orItem').value||'', amount:Number(qs('#orAmount').value||0), paid:Number(qs('#orPaid').value||0), note:qs('#orNote').value||'', date: toDMY(new Date()) };
-  await postJSON(api.add.orders, payload); showToast('تم حفظ الأوردر ✓'); ['orPhone','orItem','orAmount','orPaid','orNote'].forEach(id=>qs('#'+id).value=id==='orPaid'?'0':'');
-};
-qs('#btnClearOr').onclick=()=>{['orPhone','orItem','orAmount','orPaid','orNote'].forEach(id=>qs('#'+id).value=id==='orPaid'?'0':'');};
-
-async function loadOr(){
-  const q=params({from:qs('#orFrom').value,to:qs('#orTo').value});
-  const {rows}=await getJSON(api.list('orders',q));
-  const tbody=qs('#tblOr tbody'); tbody.innerHTML='';
-  let t=0,p=0,rem=0;
-  rows.forEach(r=>{
-    t+=Number(r.amount||0); p+=Number(r.paid||0); rem+=Number(r.remaining||0);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.dateISO||''}</td><td>${r.phone||''}</td><td>${r.item||''}</td><td>${Number(r.amount||0).toFixed(2)}</td><td>${Number(r.paid||0).toFixed(2)}</td><td>${Number(r.remaining||0).toFixed(2)}</td><td>${r.note||''}</td>`;
-    tbody.appendChild(tr);
-  });
-  qs('#orTotal').textContent=t.toFixed(2);
-  qs('#orPaidTotal').textContent=p.toFixed(2);
-  qs('#orRemainTotal').textContent=rem.toFixed(2);
-}
-qs('#btnLoadOr').onclick=loadOr;
-qs('#btnExportOr').onclick=(e)=>{e.preventDefault(); const q=params({from:qs('#orFrom').value,to:qs('#orTo').value}); location.href=api.export('orders',q);};
-
-// ---- CASH
-qs('#btnSaveCash').onclick = async ()=>{
-  const breakdown={}; qsa('#cashBreakdown input').forEach(i=>{ breakdown[i.dataset.denom]=Number(i.value||0); });
-  const payload={ session:qs('#cashSession').value, breakdown, total:Number(qs('#cashTotal').value||0), note:qs('#cashNote').value||'', date: toDMY(new Date()) };
-  await postJSON(api.add.cash, payload); showToast('تم حفظ الكاش ✓');
-};
-qs('#btnClearCash').onclick=()=>{qsa('#cashBreakdown input').forEach(i=>i.value=0); recalcCash(); qs('#cashNote').value='';};
-
-async function loadCash(){
-  const q=params({from:qs('#cashFrom').value,to:qs('#cashTo').value,session:qs('#cashFilterSession').value});
-  const {rows}=await getJSON(api.list('cash',q));
-  const tbody=qs('#tblCash tbody'); tbody.innerHTML='';
-  let total=0;
-  rows.forEach(r=>{
-    total+=Number(r.total||0);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.dateISO||''}</td><td>${r.session||''}</td><td>${Number(r.total||0).toFixed(2)}</td><td>${r.note||''}</td>`;
-    tbody.appendChild(tr);
-  });
-  qs('#cashTotalSum').textContent=total.toFixed(2);
-}
-qs('#btnLoadCash').onclick=loadCash;
-qs('#btnExportCash').onclick=(e)=>{e.preventDefault(); const q=params({from:qs('#cashFrom').value,to:qs('#cashTo').value,session:qs('#cashFilterSession').value}); location.href=api.export('cash',q);};
-
-// ---- REPORT
-qs('#btnRunReport').onclick = async ()=>{
-  const from=qs('#repFrom').value, to=qs('#repTo').value;
-  const s = (await getJSON(api.list('sales',params({from,to})))).rows;
-  const e = (await getJSON(api.list('expenses',params({from,to})))).rows;
-  const c = (await getJSON(api.list('credits',params({from,to})))).rows;
-  const o = (await getJSON(api.list('orders',params({from,to})))).rows;
-  const cashAll = (await getJSON(api.list('cash',params({from,to})))).rows;
-
-  const salesCash = s.filter(x=>x.method==='Cash');
-  const salesTill = s.filter(x=>x.method==='Till No');
-  const salesWith = s.filter(x=>x.method==='Withdraw');
-  const salesSend = s.filter(x=>x.method==='Send Money');
-
-  const morning = cashAll.filter(x=>x.session==='morning').reduce((a,b)=>a+Number(b.total||0),0);
-  const evening = cashAll.filter(x=>x.session==='evening').reduce((a,b)=>a+Number(b.total||0),0);
-  const eod     = cashAll.filter(x=>x.session==='eod').reduce((a,b)=>a+Number(b.total||0),0);
-
-  const sCash = salesCash.reduce((a,b)=>a+Number(b.amount||0),0);
-  const sTill = salesTill.reduce((a,b)=>a+Number(b.amount||0),0);
-  const sWith = salesWith.reduce((a,b)=>a+Number(b.amount||0),0);
-  const sSend = salesSend.reduce((a,b)=>a+Number(b.amount||0),0);
-
-  const expTot = e.reduce((a,b)=>a+Number(b.amount||0),0);
-  const crTot  = c.reduce((a,b)=>a+Number(b.amount||0),0);
-  const orTot  = o.reduce((a,b)=>a+Number(b.amount||0),0);
-
-  const expected = morning + sCash - expTot;
-  const diff = expected - evening;
-
-  qs('#rSalesCash').textContent=sCash.toFixed(2);
-  qs('#rSalesTill').textContent=sTill.toFixed(2);
-  qs('#rSalesWith').textContent=sWith.toFixed(2);
-  qs('#rSalesSend').textContent=sSend.toFixed(2);
-  qs('#rExp').textContent=expTot.toFixed(2);
-  qs('#rCr').textContent=crTot.toFixed(2);
-  qs('#rOr').textContent=orTot.toFixed(2);
-  qs('#rMorning').textContent=morning.toFixed(2);
-  qs('#rEvening').textContent=evening.toFixed(2);
-  qs('#rEod').textContent=eod.toFixed(2);
-  qs('#rExpected').textContent=expected.toFixed(2);
-  qs('#rDiff').textContent=diff.toFixed(2);
-};
-
-// Socket realtime append
-const socket = io();
-socket.on('new-record', ({type,record})=>{
-  // حمّل الجدول الحالي لو التاب المفتوح يخص نفس النوع
-  const active = document.querySelector('nav button.active')?.dataset.tab;
-  if(type==='sales' && active==='sales') loadSales();
-  if(type==='expenses' && active==='expenses') loadExp();
-  if(type==='credits' && active==='credit') loadCr();
-  if(type==='orders' && active==='orders') loadOr();
-  if(type==='cash' && active==='cash') loadCash();
-});
-
-// أول تحميل جداول اليوم
-loadSales(); loadExp(); loadCr(); loadOr(); loadCash(); qs('#btnRunReport').click();
-recalcCash();
-</script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
