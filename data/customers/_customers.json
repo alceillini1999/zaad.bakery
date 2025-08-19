@@ -1,0 +1,65 @@
+[
+  {
+    "CustomerID": "cust_bakkal",
+    "Name": "bakkal",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_azza",
+    "Name": "Azza",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_habib",
+    "Name": "habib",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_snack",
+    "Name": "snack attack",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_crave",
+    "Name": "crave",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_popa",
+    "Name": "popa tea",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_chopit",
+    "Name": "Chopit",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_freez",
+    "Name": "Freez",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  },
+  {
+    "CustomerID": "cust_malaki",
+    "Name": "malaki",
+    "Phone": "",
+    "Notes": "",
+    "IsCreditCustomer": true
+  }
+]

@@ -1,230 +1,280 @@
-// server.js — Zaad Bakery Data Entry (Light UI)
-// Backend: Express + Google Sheets
-
-import express from 'express';
-import path from 'path';
-import fs from 'fs';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { google } from 'googleapis';
-
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// server.js — Zaad Bakery (Render-ready)
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const fsp = require('fs/promises');
+const http = require('http');
+const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = require('socket.io')(server, { cors: { origin: '*' } });
 
-// ---------- Basic Auth ----------
-const PUBLIC_AUTH_USER = process.env.PUBLIC_AUTH_USER || 'admin';
-const PUBLIC_AUTH_PASS = process.env.PUBLIC_AUTH_PASS || 'password';
-
-app.use((req, res, next) => {
-  // skip auth for healthz
-  if (req.path === '/healthz') return next();
-
-  // only protect app/api, allow static assets (css/js/img) to pass
-  const h = req.headers['authorization'] || '';
-  if (!h.startsWith('Basic ')) {
-    res.set('WWW-Authenticate', 'Basic realm="Zaad Bakery"');
-    return res.status(401).end('Auth required');
-  }
-  const creds = Buffer.from(h.split(' ')[1] || '', 'base64').toString();
-  const [u, p] = creds.split(':');
-  if (u === PUBLIC_AUTH_USER && p === PUBLIC_AUTH_PASS) return next();
-
-  res.set('WWW-Authenticate', 'Basic realm="Zaad Bakery"');
-  return res.status(401).end('Invalid credentials');
-});
-
-// ---------- Static / JSON ----------
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ---------- Google Sheets ----------
-const SHEETS_ENABLED = String(process.env.SHEETS_ENABLED || 'true').toLowerCase() === 'true';
-const SPREADSHEET_ID = process.env.SHEETS_SPREADSHEET_ID || '';
-const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS || '';
-
-let sheetsClient = null;
-
-async function getSheets() {
-  if (!SHEETS_ENABLED) return null;
-  if (!SPREADSHEET_ID) throw new Error('Missing SHEETS_SPREADSHEET_ID');
-  if (!GOOGLE_APPLICATION_CREDENTIALS) throw new Error('Missing GOOGLE_APPLICATION_CREDENTIALS');
-
-  // ensure credentials file exists (on Render: /etc/secrets/google.json)
-  if (!fs.existsSync(GOOGLE_APPLICATION_CREDENTIALS)) {
-    throw new Error(`Service account file not found: ${GOOGLE_APPLICATION_CREDENTIALS}`);
-  }
-
-  if (!sheetsClient) {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: GOOGLE_APPLICATION_CREDENTIALS,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    sheetsClient = google.sheets({ version: 'v4', auth });
-  }
-  return sheetsClient;
-}
-
-async function appendRow(tabName, values) {
-  if (!SHEETS_ENABLED) return { ok: true, skipped: true };
-  const sheets = await getSheets();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${tabName}!A1`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [values] },
-  });
-  return { ok: true };
-}
+// ---------- Config ----------
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
+const DATA_DIR = path.join(__dirname, 'data');
+const FILES = {
+  sales: path.join(DATA_DIR, 'sales.jsonl'),
+  expenses: path.join(DATA_DIR, 'expenses.jsonl'),
+  credits: path.join(DATA_DIR, 'credits.jsonl'),
+  orders: path.join(DATA_DIR, 'orders.jsonl'),
+  cash: path.join(DATA_DIR, 'cash.jsonl'),
+};
 
 // ---------- Helpers ----------
-function nowISO() {
-  return new Date().toISOString();
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+  for (const p of Object.values(FILES)) {
+    if (!fs.existsSync(p)) fs.writeFileSync(p, '');
+  }
 }
-function toNum(v) {
-  const n = Number(v || 0);
-  return Number.isFinite(n) ? n : 0;
+
+function todayISO(d = new Date()) {
+  return new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-// ---------- APIs ----------
-app.get('/healthz', (_, res) => res.json({ ok: true, ts: nowISO() }));
+function parseToISO(input) {
+  if (!input) return todayISO();
+  if (typeof input === 'string') {
+    if (input.includes('/')) {
+      // dd/mm/yyyy
+      const [dd, mm, yyyy] = input.split('/');
+      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+    }
+    // assume already ISO or something parsable
+    return input.slice(0, 10);
+  }
+  return todayISO(input);
+}
 
-// Sales: POST /api/sales
-// Body: { amount?, product?, quantity?, unitPrice?, method, tillNumber?, note? }
-app.post('/api/sales', async (req, res) => {
+async function appendRecord(type, obj) {
+  const file = FILES[type];
+  if (!file) throw new Error('Unknown type');
+  const line = JSON.stringify(obj) + '\n';
+  await fsp.appendFile(file, line, 'utf8');
+}
+
+async function readAll(type) {
+  const file = FILES[type];
+  if (!file) throw new Error('Unknown type');
+  if (!fs.existsSync(file)) return [];
+  const raw = await fsp.readFile(file, 'utf8');
+  if (!raw.trim()) return [];
+  return raw
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => {
+      try { return JSON.parse(l); } catch { return null; }
+    })
+    .filter(Boolean);
+}
+
+function filterByQuery(rows, q) {
+  const from = q.from ? parseToISO(q.from) : null;
+  const to = q.to ? parseToISO(q.to) : null;
+  const method = q.method || q.payment || null;
+  const customer = q.customer || q.name || null;
+
+  return rows.filter(r => {
+    const d = r.dateISO || r.date || todayISO();
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (method && (r.method !== method && r.payment !== method)) return false;
+    if (customer && (r.customer || r.client || '').toLowerCase() !== customer.toLowerCase()) return false;
+    return true;
+  });
+}
+
+// CSV export (بسيط)
+function toCSV(rows) {
+  if (!rows.length) return 'empty\n';
+  const headers = Array.from(
+    rows.reduce((set, obj) => { Object.keys(obj).forEach(k => set.add(k)); return set; }, new Set())
+  );
+  const escape = (v) => {
+    if (v == null) return '';
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => escape(r[h])).join(','))
+  ];
+  return lines.join('\n');
+}
+
+// ---------- Middleware ----------
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Basic Auth (اختياري عبر env)
+function basicAuth(req, res, next) {
+  const u = process.env.PUBLIC_AUTH_USER;
+  const p = process.env.PUBLIC_AUTH_PASS;
+  if (!u || !p) return next(); // معطّل إن لم يوجد
+  const hdr = req.headers.authorization || '';
+  const [type, val] = hdr.split(' ');
+  if (type === 'Basic' && val) {
+    const [user, pass] = Buffer.from(val, 'base64').toString().split(':');
+    if (user === u && pass === p) return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Zaad Bakery"');
+  return res.status(401).send('Authentication required');
+}
+
+// قد ترغب بحماية الكل:
+app.use(basicAuth);
+
+// Static
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ---------- Socket.IO ----------
+io.on('connection', (socket) => {
+  // مجرد تسجيل
+  console.log('Realtime client connected');
+});
+
+// ---------- Routes (Add) ----------
+async function handleAdd(type, mapper) {
+  return async (req, res) => {
+    try {
+      const body = req.body || {};
+      const now = new Date();
+      const base = {
+        dateISO: parseToISO(body.date),
+        createdAt: now.toISOString(),
+      };
+      const record = Object.assign(base, mapper(body));
+
+      await appendRecord(type, record);
+
+      io.emit('new-record', { type, record });
+      res.json({ ok: true, type, record });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  };
+}
+
+// Sales
+app.post('/api/sales/add', handleAdd('sales', (b) => ({
+  amount: Number(b.amount || b.total || 0),
+  method: b.method || b.payment || 'Cash',
+  note: b.note || '',
+})));
+// توافق مع اسمك القديم
+app.post('/save-sale', (req, res, next) => { req.url = '/api/sales/add'; next(); }, app._router);
+
+// Expenses
+app.post('/api/expenses/add', handleAdd('expenses', (b) => ({
+  item: b.item || b.name || '',
+  amount: Number(b.amount || 0),
+  method: b.method || b.payment || 'Cash',
+  note: b.note || '',
+})));
+app.post('/save-expense', (req, res, next) => { req.url = '/api/expenses/add'; next(); }, app._router);
+
+// Credits
+app.post('/api/credits/add', handleAdd('credits', (b) => {
+  const paid = Number(b.paid || 0);
+  const amount = Number(b.amount || 0);
+  return {
+    customer: b.customer || b.name || '',
+    item: b.item || '',
+    amount,
+    paid,
+    remaining: Math.max(0, amount - paid),
+    note: b.note || '',
+    paymentDateISO: b.paymentDate ? parseToISO(b.paymentDate) : '',
+  };
+}));
+app.post('/save-credit', (req, res, next) => { req.url = '/api/credits/add'; next(); }, app._router);
+
+// Orders
+app.post('/api/orders/add', handleAdd('orders', (b) => {
+  const paid = Number(b.paid || 0);
+  const amount = Number(b.amount || 0);
+  return {
+    phone: b.phone || b.clientPhone || '',
+    item: b.item || b.product || '',
+    amount,
+    paid,
+    remaining: Math.max(0, amount - paid),
+    note: b.note || '',
+  };
+}));
+app.post('/save-order', (req, res, next) => { req.url = '/api/orders/add'; next(); }, app._router);
+
+// Cash (morning/evening with breakdown)
+app.post('/api/cash/add', handleAdd('cash', (b) => ({
+  session: b.session || b.time || 'morning', // morning / evening
+  breakdown: b.breakdown || {},             // {1000: x, 500: y, ...}
+  total: Number(b.total || 0),
+  note: b.note || '',
+})));
+app.post('/save-cash', (req, res, next) => { req.url = '/api/cash/add'; next(); }, app._router);
+
+// ---------- Routes (List / Export) ----------
+
+// List with filters: /api/:type/list?from=YYYY-MM-DD&to=YYYY-MM-DD&method=Cash&customer=Azza
+app.get('/api/:type/list', async (req, res) => {
   try {
-    const {
-      product = '',
-      quantity = '',
-      unitPrice = '',
-      amount,
-      method = 'Cash',
-      tillNumber = '',
-      note = '',
-    } = req.body || {};
-
-    const q = toNum(quantity);
-    const up = toNum(unitPrice);
-    const gross = amount !== undefined ? toNum(amount) : (q * up);
-
-    const row = [
-      nowISO(),       // A: DateTime
-      product,        // B: Product
-      q,              // C: Quantity
-      up,             // D: UnitPrice
-      gross,          // E: GrossAmount
-      method,         // F: PaymentMethod
-      tillNumber,     // G: TillNumber
-      note,           // H: Note
-    ];
-    await appendRow('Sales', row);
-    res.json({ ok: true, row });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    const type = req.params.type;
+    const rows = await readAll(type);
+    const filtered = filterByQuery(rows, req.query || {});
+    res.json({ ok: true, type, count: filtered.length, rows: filtered });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Expenses: POST /api/expenses
-// Body: { amount, category, method, note }
-app.post('/api/expenses', async (req, res) => {
+// توافق مع القديم: /load?type=sales&from=..&to=..
+app.get('/load', async (req, res) => {
   try {
-    const { amount = 0, category = '', method = 'Cash', note = '' } = req.body || {};
-    const row = [
-      nowISO(),            // A: DateTime
-      toNum(amount),       // B: Amount
-      method,              // C: PayMethod
-      category,            // D: Item/Category
-      note,                // E: Note
-    ];
-    await appendRow('Expenses', row);
-    res.json({ ok: true, row });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    const type = (req.query.type || '').toLowerCase();
+    const rows = await readAll(type);
+    const filtered = filterByQuery(rows, req.query || {});
+    res.json({ ok: true, type, count: filtered.length, rows: filtered });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Cash Count: POST /api/cashcount
-// Body: { CountDate?, Session: 'Morning'|'Evening', denominations: {1000,500,200,100,50,40,20,10,5,1}, note? }
-app.post('/api/cashcount', async (req, res) => {
+// Export CSV: /api/:type/export
+app.get('/api/:type/export', async (req, res) => {
   try {
-    const { CountDate, Session = 'Morning', denominations = {}, Note = '' } = req.body || {};
-    const den = {
-      1000: toNum(denominations[1000]),
-      500: toNum(denominations[500]),
-      200: toNum(denominations[200]),
-      100: toNum(denominations[100]),
-      50: toNum(denominations[50]),
-      40: toNum(denominations[40]),
-      20: toNum(denominations[20]),
-      10: toNum(denominations[10]),
-      5: toNum(denominations[5]),
-      1: toNum(denominations[1]),
-    };
-    const total =
-      1000 * den[1000] + 500 * den[500] + 200 * den[200] + 100 * den[100] +
-      50 * den[50] + 40 * den[40] + 20 * den[20] + 10 * den[10] + 5 * den[5] + 1 * den[1];
-
-    const row = [
-      (CountDate ? new Date(CountDate).toISOString().slice(0, 10) : nowISO().slice(0, 10)), // A: Date (YYYY-MM-DD)
-      Session,                 // B
-      den[1000], den[500], den[200], den[100], den[50], den[40], den[20], den[10], den[5], den[1], // C..L
-      total,                   // M: CashTotal
-      Note || '',              // N: Note
-    ];
-    await appendRow('CashCount', row);
-    res.json({ ok: true, total, row });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    const type = req.params.type;
+    const rows = filterByQuery(await readAll(type), req.query || {});
+    const csv = toCSV(rows);
+    res.setHeader('Content-Disposition', `attachment; filename="${type}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Mobile Ledger: POST /api/mobile/ledger
-// Body: { Channel: 'Withdraw Cash'|'Buy Goods'|'Send Money', OpeningBalance?, OutflowWithdrawn?, ClosingBalanceActual?, Note? }
-app.post('/api/mobile/ledger', async (req, res) => {
+// توافق مع القديم: /export-csv?type=sales
+app.get('/export-csv', async (req, res) => {
   try {
-    const {
-      Channel = 'Withdraw Cash',
-      OpeningBalance = 0,
-      OutflowWithdrawn = 0,
-      ClosingBalanceActual = 0,
-      Note = '',
-    } = req.body || {};
-
-    // Expected = Opening + (sales inflow is tracked in "Sales" tab, but we keep zero here) - Outflow - expenses on that channel (not provided)
-    const ClosingBalanceExpected = toNum(OpeningBalance) - toNum(OutflowWithdrawn);
-    const Variance = toNum(ClosingBalanceActual) - ClosingBalanceExpected;
-
-    const row = [
-      nowISO().slice(0, 10),    // A: Date
-      Channel,                  // B
-      toNum(OpeningBalance),    // C
-      0,                        // D: InflowFromSales (kept 0; reporting can aggregate from Sales tab)
-      toNum(OutflowWithdrawn),  // E
-      0,                        // F: ExpensesOnChannel (kept 0)
-      ClosingBalanceExpected,   // G
-      toNum(ClosingBalanceActual), // H
-      Variance,                 // I
-      Note,                     // J
-    ];
-    await appendRow('MobileLedger', row);
-    res.json({ ok: true, variance: Variance, row });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    const type = (req.query.type || '').toLowerCase();
+    const rows = filterByQuery(await readAll(type), req.query || {});
+    const csv = toCSV(rows);
+    res.setHeader('Content-Disposition', `attachment; filename="${type}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// ---------- Fallback: serve the app ----------
-app.get('/', (_, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// ---------- Boot ----------
+ensureDataDir();
 
-// ---------- Start ----------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  const ip = process.env.RENDER ? '0.0.0.0' : 'localhost';
-  console.log(`Zaad Bakery server listening on http://${ip}:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
