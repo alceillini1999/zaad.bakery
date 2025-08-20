@@ -8,6 +8,7 @@
 // - Invoice PDF generation + WhatsApp link
 // - Optional Basic Auth via PUBLIC_AUTH_USER/PUBLIC_AUTH_PASS
 // - Realtime via Socket.IO
+// - ✅ Google Sheets sync (Service Account) — per-type tabs with headers, auto-created
 
 const express = require('express');
 const path = require('path');
@@ -17,6 +18,11 @@ const http = require('http');
 const cors = require('cors');
 const multer = require('multer');
 require('dotenv').config();
+
+// ---- Optional require googleapis (won't crash if missing) ----
+let google = null;
+try { google = require('googleapis').google; }
+catch (e) { console.warn('[Sheets] googleapis not installed — sync disabled'); }
 
 const app = express();
 const server = http.createServer(app);
@@ -62,10 +68,6 @@ function parseToISO(input) {
 }
 function newId(){ return (Date.now().toString(36) + Math.random().toString(36).slice(2,6)).toUpperCase(); }
 
-async function appendRecord(type, obj) {
-  const file = FILES[type]; if (!file) throw new Error('Unknown type');
-  const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
-}
 async function readAll(type) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
   if (!fs.existsSync(file)) return [];
@@ -95,6 +97,138 @@ function toCSV(rows) {
   return [headers.join(','), ...rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n');
 }
 const sumBy=(arr,fn)=>arr.reduce((a,x)=>a+(+fn(x)||0),0);
+
+// ---------- Google Sheets Sync ----------
+const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '';
+const SHEET_PREFIX   = process.env.SHEET_PREFIX || ''; // optional, e.g. 'Zaad_'
+
+const _sheetsState = {
+  client: null,
+  enabled: !!(google && SPREADSHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+  knownTabs: new Set()
+};
+
+async function getSheetsClient() {
+  if (!_sheetsState.enabled) return null;
+  if (_sheetsState.client) return _sheetsState.client;
+  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  const authClient = await auth.getClient();
+  _sheetsState.client = google.sheets({ version: 'v4', auth: authClient });
+  // prime known tabs
+  try {
+    const meta = await _sheetsState.client.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    (meta.data.sheets || []).forEach(s => _sheetsState.knownTabs.add(s.properties.title));
+  } catch (e) {
+    console.warn('[Sheets] read meta failed:', e.message);
+  }
+  return _sheetsState.client;
+}
+
+function sheetSpec(type, r) {
+  const tab = (name) => SHEET_PREFIX ? `${SHEET_PREFIX}${name}` : name;
+  switch (type) {
+    case 'sales': return {
+      name: tab('Sales'),
+      headers: ['ID','DateISO','CreatedAt','Product','Quantity','UnitPrice','Amount','Method','Note','Source'],
+      row: [r.id, r.dateISO, r.createdAt, r.product||'', +r.quantity||0, +r.unitPrice||0, +r.amount||0, r.method||'', r.note||'', r.source||'']
+    };
+    case 'expenses': return {
+      name: tab('Expenses'),
+      headers: ['ID','DateISO','CreatedAt','Item','Amount','Method','Note','ReceiptPath'],
+      row: [r.id, r.dateISO, r.createdAt, r.item||'', +r.amount||0, r.method||'', r.note||'', r.receiptPath||'']
+    };
+    case 'credits': return {
+      name: tab('Credits'),
+      headers: ['ID','DateISO','CreatedAt','Customer','Item','Amount','Paid','Remaining','Note','PaymentDateISO'],
+      row: [r.id, r.dateISO, r.createdAt, r.customer||'', r.item||'', +r.amount||0, +r.paid||0, +r.remaining||0, r.note||'', r.paymentDateISO||'']
+    };
+    case 'credit_payments': return {
+      name: tab('CreditPayments'),
+      headers: ['ID','DateISO','CreatedAt','Customer','Paid','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.customer||'', +r.paid||0, r.note||'']
+    };
+    case 'orders': return {
+      name: tab('Orders'),
+      headers: ['ID','DateISO','CreatedAt','Phone','Item','Amount','Paid','Remaining','Status','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.phone||'', r.item||'', +r.amount||0, +r.paid||0, +r.remaining||0, r.status||'', r.note||'']
+    };
+    case 'orders_status': return {
+      name: tab('OrdersStatus'),
+      headers: ['OrderId','Status','DateISO','CreatedAt'],
+      row: [r.id, r.status||'', r.dateISO, r.createdAt]
+    };
+    case 'orders_payments': return {
+      name: tab('OrdersPayments'),
+      headers: ['ID','DateISO','CreatedAt','OrderId','Amount','Method'],
+      row: [r.id, r.dateISO, r.createdAt, r.orderId||'', +r.amount||0, r.method||'']
+    };
+    case 'cash': return {
+      name: tab('Cash'),
+      headers: ['ID','DateISO','CreatedAt','Session','Total','Note','BreakdownJSON'],
+      row: [r.id, r.dateISO, r.createdAt, r.session||'', +r.total||0, r.note||'', JSON.stringify(r.breakdown||{})]
+    };
+    default: return null;
+  }
+}
+
+async function ensureTabAndHeader(sheets, sheetName, headers) {
+  if (_sheetsState.knownTabs.has(sheetName)) return;
+  // ensure tab exists
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = (meta.data.sheets || []).some(s => s.properties.title === sheetName);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
+    });
+  }
+  // ensure header row
+  const hdr = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!1:1`
+  });
+  const hasHeader = hdr.data.values && hdr.data.values[0] && hdr.data.values[0].length >= headers.length;
+  if (!hasHeader) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!A1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] }
+    });
+  }
+  _sheetsState.knownTabs.add(sheetName);
+}
+
+async function appendToGoogleSheet(type, record) {
+  try {
+    const sheets = await getSheetsClient();
+    if (!sheets) return;
+    const spec = sheetSpec(type, record);
+    if (!spec) return;
+    await ensureTabAndHeader(sheets, spec.name, spec.headers);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${spec.name}!A:Z`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [spec.row] }
+    });
+  } catch (e) {
+    console.warn(`[Sheets] append failed for type=${type}:`, e.message);
+  }
+}
+
+// single place to write local + async sheets
+async function appendRecord(type, obj) {
+  const file = FILES[type]; if (!file) throw new Error('Unknown type');
+  const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
+  // fire-and-forget sheets sync
+  appendToGoogleSheet(type, obj).catch(()=>{});
+}
 
 // ---------- Middleware ----------
 app.use(cors());
@@ -448,8 +582,25 @@ app.post('/api/invoices/create', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
+// ===== Sheets Health =====
+app.get('/api/sheets/health', async (req, res) => {
+  try {
+    const sheets = await getSheetsClient();
+    if (!sheets) return res.status(200).json({ ok:false, reason: 'disabled or not configured' });
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    res.json({ ok:true, title: meta.data.properties.title, sheets: (meta.data.sheets||[]).map(s=>s.properties.title) });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
 // ---------- Boot ----------
 ensureDirs();
 server.listen(PORT, HOST, ()=> {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (!_sheetsState.enabled) {
+    console.log('[Sheets] Sync disabled. Set GOOGLE_SERVICE_ACCOUNT_JSON & SPREADSHEET_ID to enable.');
+  } else {
+    console.log('[Sheets] Sync is enabled.');
+  }
 });
