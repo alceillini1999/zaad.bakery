@@ -1,4 +1,4 @@
-// server.js — Zaad Bakery (Render-ready, Pro + Order Payments + Expense Receipt)
+// server.js — Zaad Bakery (Pro) + Order Payments + Expense Receipt + Invoice PDFs
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -16,6 +16,10 @@ const io = require('socket.io')(server, { cors: { origin: '*' } });
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 const DATA_DIR = path.join(__dirname, 'data');
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const UPLOAD_DIR = path.join(PUBLIC_DIR, 'uploads');
+const INVOICES_DIR = path.join(PUBLIC_DIR, 'invoices');
+
 const FILES = {
   sales: path.join(DATA_DIR, 'sales.jsonl'),
   expenses: path.join(DATA_DIR, 'expenses.jsonl'),
@@ -25,15 +29,14 @@ const FILES = {
   orders_status: path.join(DATA_DIR, 'orders_status.jsonl'),
   orders_payments: path.join(DATA_DIR, 'orders_payments.jsonl'),
   cash: path.join(DATA_DIR, 'cash.jsonl'),
+  invoices: path.join(DATA_DIR, 'invoices.jsonl'),
 };
-
-// uploads dir (for expense receipts)
-const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads');
 
 // ---------- Helpers ----------
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  [DATA_DIR, PUBLIC_DIR, UPLOAD_DIR, INVOICES_DIR].forEach(d=>{
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+  });
   for (const p of Object.values(FILES)) {
     if (!fs.existsSync(p)) fs.writeFileSync(p, '');
   }
@@ -48,10 +51,9 @@ function parseToISO(input) {
   return todayISO(input);
 }
 function newId(){ return (Date.now().toString(36) + Math.random().toString(36).slice(2,6)).toUpperCase(); }
-
 async function appendRecord(type, obj) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
-  const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
+  await fsp.appendFile(file, JSON.stringify(obj) + '\n', 'utf8');
 }
 async function readAll(type) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
@@ -87,8 +89,6 @@ const sumBy=(arr,fn)=>arr.reduce((a,x)=>a+(+fn(x)||0),0);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// file uploads (for expenses)
 const upload = multer({ dest: UPLOAD_DIR });
 
 // Basic Auth (optional via env)
@@ -102,8 +102,9 @@ function basicAuth(req,res,next){
 app.use(basicAuth);
 
 // Static (no-cache index for fresh UI)
-app.use(express.static(path.join(__dirname, 'public'),{
-  etag:false,lastModified:false,setHeaders:(res,fp)=>{ if (fp.endsWith('index.html')) res.setHeader('Cache-Control','no-store'); }
+app.use(express.static(PUBLIC_DIR, {
+  etag:false,lastModified:false,
+  setHeaders:(res,fp)=>{ if (fp.endsWith('index.html')) res.setHeader('Cache-Control','no-store'); }
 }));
 
 // ---------- Socket.IO ----------
@@ -127,7 +128,7 @@ const handleAdd = (type, mapper) => async (req,res)=>{
 // ===== Sales =====
 const addSale = handleAdd('sales', b=>({
   product: b.product||'',
-  quantity: Number(b.quantity||1),   // لن تُستخدم حالياً في الواجهة
+  quantity: Number(b.quantity||1),
   unitPrice: Number(b.unitPrice||0),
   amount: Number(b.amount || b.total || (Number(b.quantity||1)*Number(b.unitPrice||0)) || 0),
   method: b.method || b.payment || 'Cash',
@@ -156,12 +157,6 @@ app.post('/api/expenses/add', upload.single('receipt'), async (req,res)=>{
     res.json({ ok:true, record });
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error:err.message }); }
 });
-app.post('/save-expense', handleAdd('expenses', b=>({
-  item: b.item||b.name||'',
-  amount: Number(b.amount||0),
-  method: b.method||b.payment||'Cash',
-  note: b.note||'',
-})));
 
 // ===== Credits & Payments =====
 const addCredit = handleAdd('credits', b=>{
@@ -191,7 +186,6 @@ const addOrder = handleAdd('orders', b=>{
 app.post('/api/orders/add', addOrder);
 app.post('/save-order', addOrder);
 
-// update order status
 app.post('/api/orders/status', async (req,res)=>{
   try{
     const { id, status } = req.body||{};
@@ -227,7 +221,6 @@ app.post('/api/orders/pay', async (req,res)=>{
     await appendRecord('orders_payments', payRec);
     io.emit('new-record', { type:'orders_payments', record: payRec });
 
-    // also add to sales
     const saleRec = {
       id: newId(), dateISO, createdAt: nowISO,
       product: order.item || 'Order',
@@ -241,18 +234,16 @@ app.post('/api/orders/pay', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// ---------- List / Export (orders merged with status & payments) ----------
+// ---------- Orders list (merge status & payments) ----------
 app.get('/api/orders/list', async (req,res)=>{
   try{
     const base = filterByQuery(await readAll('orders'), req.query||{});
     const statusEv = await readAll('orders_status');
     const payEv    = await readAll('orders_payments');
 
-    // latest status per id
     const latestStatus = new Map();
     for (const ev of statusEv) latestStatus.set(ev.id, ev.status);
 
-    // sum payments per id
     const sumPays = new Map();
     for (const ev of payEv) sumPays.set(ev.id, (sumPays.get(ev.id)||0) + (+ev.paid||+ev.amount||0));
 
@@ -269,17 +260,15 @@ app.get('/api/orders/list', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// generic lists
+// ---------- Generic lists / CSV ----------
 app.get('/api/:type/list', async (req,res)=>{
   try{
     const type=req.params.type;
-    if (type==='orders') return; // handled above
+    if (type==='orders') return;
     const rows = filterByQuery(await readAll(type), req.query||{});
     res.json({ ok:true, type, count: rows.length, rows });
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
-
-// CSV export
 app.get('/api/:type/export', async (req,res)=>{
   try{
     const type=req.params.type;
@@ -291,7 +280,7 @@ app.get('/api/:type/export', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// PDF daily report
+// ---------- Reports PDF ----------
 app.get('/api/report/daily-pdf', async (req,res)=>{
   try{
     const PDFDocument = require('pdfkit');
@@ -337,6 +326,94 @@ app.get('/api/report/daily-pdf', async (req,res)=>{
     doc.moveDown().text('Generated by Zaad Bakery System', {align:'right', oblique:true});
     doc.end();
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// ---------- Invoices (Create PDF + WhatsApp link) ----------
+app.post('/api/invoices/create', async (req,res)=>{
+  try{
+    const PDFDocument = require('pdfkit');
+
+    const id = (req.body.id && String(req.body.id).startsWith('INV-')) ? req.body.id : ('INV-' + newId());
+    const clientPhone = (req.body.clientPhone||'').trim();
+    const clientName  = (req.body.clientName||'').trim();
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    if (items.length === 0) return res.status(400).json({ ok:false, error:'Items required' });
+
+    const dateISO = todayISO();
+    const total = items.reduce((s,x)=> s + (Number(x.price||0)*Number(x.qty||0)), 0);
+
+    // Save record
+    const rec = { id, dateISO, clientPhone, clientName, items, total, createdAt: new Date().toISOString() };
+    await appendRecord('invoices', rec);
+
+    // Prepare PDF
+    const filePath = path.join(INVOICES_DIR, `${id}.pdf`);
+    const publicUrl = `/invoices/${id}.pdf`;
+    const absBase = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
+    const absUrl  = absBase + publicUrl;
+
+    const brand = '#7a4b2b', brand2='#c89a58';
+    const doc = new PDFDocument({ margin: 40 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    // Header
+    doc.rect(40, 40, doc.page.width-80, 70).fill(brand);
+    try { doc.image(path.join(PUBLIC_DIR,'img','zaad-logo.jpeg'), 50, 50, {width:48}); } catch {}
+    doc.fillColor('white').fontSize(20).text('Zaad Bakery', 110, 55);
+    doc.fontSize(12).text(`Invoice ${id}`, 110, 80);
+    doc.text(`Date: ${dateISO}`, doc.page.width-200, 55, {width:160, align:'right'});
+    if (clientPhone) doc.text(`Client: ${clientName||''} ${clientPhone}`, doc.page.width-200, 75, {width:160, align:'right'});
+
+    doc.moveDown(2);
+    doc.fillColor('black');
+
+    // Table headers
+    const startY = 130;
+    doc.fontSize(12).fillColor(brand)
+      .text('Product', 50, startY)
+      .text('Unit',    300, startY, {width:80, align:'right'})
+      .text('Qty',     390, startY, {width:60, align:'right'})
+      .text('Total',   460, startY, {width:100, align:'right'});
+    doc.moveTo(40, startY+18).lineTo(doc.page.width-40, startY+18).strokeColor(brand2).stroke();
+
+    // Rows
+    let y = startY+28; doc.fillColor('black');
+    items.forEach(it=>{
+      const lineTotal = Number(it.price||0)*Number(it.qty||0);
+      doc.text(String(it.name||''), 50, y, {width:230});
+      doc.text((+it.price||0).toFixed(2), 300, y, {width:80, align:'right'});
+      doc.text((+it.qty||0),              390, y, {width:60, align:'right'});
+      doc.text(lineTotal.toFixed(2),      460, y, {width:100, align:'right'});
+      y += 22;
+    });
+    doc.moveTo(40, y+4).lineTo(doc.page.width-40, y+4).strokeColor('#ddd').stroke();
+
+    // Total box
+    y += 14;
+    doc.roundedRect(doc.page.width-220, y, 180, 70, 8).strokeColor(brand2).stroke();
+    doc.fontSize(12).fillColor('#666').text('Total', doc.page.width-210, y+10);
+    doc.fontSize(18).fillColor(brand).text(total.toFixed(2), doc.page.width-210, y+30);
+
+    // Thank you
+    doc.fillColor('#666').fontSize(11).text('Thank you for choosing Zaad Bakery! We appreciate your business.', 50, y+90, {width:doc.page.width-100, align:'center'});
+
+    doc.end();
+
+    await new Promise((resolve,reject)=>{
+      stream.on('finish', resolve); stream.on('error', reject);
+    });
+
+    // WhatsApp link
+    const digits = (clientPhone || '').replace(/[^\d]/g,''); // intl format without +
+    const message = `Hello${clientName? ' '+clientName: ''}! Here is your invoice ${id} (${dateISO}) from Zaad Bakery. Thank you for your business. ${absUrl}`;
+    const waLink = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    res.json({ ok:true, id, url: publicUrl, absoluteUrl: absUrl, waLink });
+  }catch(err){
+    console.error(err);
+    res.status(500).json({ ok:false, error: err.message });
+  }
 });
 
 // ---------- Boot ----------
