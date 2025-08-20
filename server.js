@@ -9,6 +9,7 @@
 // - Optional Basic Auth via PUBLIC_AUTH_USER/PUBLIC_AUTH_PASS
 // - Realtime via Socket.IO
 // - ✅ Google Sheets sync (Service Account) — per-type tabs with headers, auto-created
+// - ✅ Two-way sync (Sheets <-> Local) + polling + endpoints
 
 const express = require('express');
 const path = require('path');
@@ -225,9 +226,212 @@ async function appendToGoogleSheet(type, record) {
 // single place to write local + async sheets
 async function appendRecord(type, obj) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
+  if (!obj.updatedAt) obj.updatedAt = obj.createdAt || new Date().toISOString();
   const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
   // fire-and-forget sheets sync
   appendToGoogleSheet(type, obj).catch(()=>{});
+}
+
+/* ===== Two-way Sync (Google Sheet <-> Local JSONL) ===== */
+const SHEETS_POLL_MS = Number(process.env.SHEETS_POLL_MS || 0); // مثال: 5000 = كل 5 ثواني
+const SHEETS_ALLOW_DELETE = String(process.env.SHEETS_ALLOW_DELETE || 'false').toLowerCase() === 'true';
+
+// (A) توسعة sheetSpec لإضافة UpdatedAt تلقائيًا وإخراج الصف حسب ترتيب العناوين
+const _sheetSpecOrig = sheetSpec;
+sheetSpec = function(type, r) {
+  const spec = _sheetSpecOrig(type, r || {});
+  if (!spec) return spec;
+
+  if (!spec.headers.includes('UpdatedAt')) {
+    const idx = Math.max(spec.headers.indexOf('CreatedAt') + 1, 3);
+    spec.headers.splice(idx, 0, 'UpdatedAt');
+  }
+
+  const createdAt = (r && (r.createdAt || r.CreatedAt)) || new Date().toISOString();
+  const updatedAt = (r && (r.updatedAt || r.UpdatedAt)) || createdAt;
+
+  const base = {
+    ID: r?.id ?? '',
+    DateISO: r?.dateISO ?? '',
+    CreatedAt: createdAt,
+    UpdatedAt: updatedAt
+  };
+
+  switch (type) {
+    case 'sales':
+      Object.assign(base, { Product:r?.product||'', Quantity:+(r?.quantity||0), UnitPrice:+(r?.unitPrice||0), Amount:+(r?.amount||0), Method:r?.method||'', Note:r?.note||'', Source:r?.source||'' });
+      break;
+    case 'expenses':
+      Object.assign(base, { Item:r?.item||'', Amount:+(r?.amount||0), Method:r?.method||'', Note:r?.note||'', ReceiptPath:r?.receiptPath||'' });
+      break;
+    case 'credits':
+      Object.assign(base, { Customer:r?.customer||'', Item:r?.item||'', Amount:+(r?.amount||0), Paid:+(r?.paid||0), Remaining:+(r?.remaining||0), Note:r?.note||'', PaymentDateISO:r?.paymentDateISO||'' });
+      break;
+    case 'credit_payments':
+      Object.assign(base, { Customer:r?.customer||'', Paid:+(r?.paid||0), Note:r?.note||'' });
+      break;
+    case 'orders':
+      Object.assign(base, { Phone:r?.phone||'', Item:r?.item||'', Amount:+(r?.amount||0), Paid:+(r?.paid||0), Remaining:+(r?.remaining||0), Status:r?.status||'', Note:r?.note||'' });
+      break;
+    case 'orders_status':
+      Object.assign(base, { OrderId:r?.id||'', Status:r?.status||'' });
+      break;
+    case 'orders_payments':
+      Object.assign(base, { OrderId:r?.orderId||'', Amount:+(r?.amount||0), Method:r?.method||'' });
+      break;
+    case 'cash':
+      Object.assign(base, { Session:r?.session||'', Total:+(r?.total||0), Note:r?.note||'', BreakdownJSON: JSON.stringify(r?.breakdown||{}) });
+      break;
+  }
+
+  spec.row = spec.headers.map(h => base[h] ?? '');
+  return spec;
+};
+
+// (B) قراءة تبويب الشيت كأوبچكتات مبنية على صف العناوين
+async function readSheetObjects(sheetName) {
+  const sheets = await getSheetsClient();
+  if (!sheets) throw new Error('Sheets disabled');
+  const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!A:Z` });
+  const values = resp.data.values || [];
+  if (!values.length) return { headers: [], rows: [] };
+  const headers = values[0];
+  const rows = values.slice(1).map(r => {
+    const o = {};
+    headers.forEach((h,i) => o[h] = r[i] ?? '');
+    return o;
+  });
+  return { headers, rows };
+}
+
+// (C) تحويل صف من الشيت إلى سجل داخلي
+function sheetRowToRecord(type, o) {
+  const get = (k, alt) => (o[k] ?? o[alt] ?? '');
+  const num = v => (v===''||v==null) ? 0 : Number(v);
+  const rec = {
+    id: get('ID','id') || newId(),
+    dateISO: get('DateISO','dateISO') || todayISO(),
+    createdAt: get('CreatedAt','createdAt') || new Date().toISOString(),
+    updatedAt: get('UpdatedAt','updatedAt') || get('CreatedAt','createdAt') || new Date().toISOString(),
+  };
+  switch (type) {
+    case 'sales':    return Object.assign(rec, { product:get('Product','product'), quantity:num(get('Quantity','quantity')), unitPrice:num(get('UnitPrice','unitPrice')), amount:num(get('Amount','amount')), method:get('Method','method')||'Cash', note:get('Note','note'), source:get('Source','source') });
+    case 'expenses': return Object.assign(rec, { item:get('Item','item'), amount:num(get('Amount','amount')), method:get('Method','method')||'Cash', note:get('Note','note'), receiptPath:get('ReceiptPath','receiptPath') });
+    case 'credits':  return Object.assign(rec, { customer:get('Customer','customer'), item:get('Item','item'), amount:num(get('Amount','amount')), paid:num(get('Paid','paid')), remaining:num(get('Remaining','remaining')), note:get('Note','note'), paymentDateISO:get('PaymentDateISO','paymentDateISO') });
+    case 'cash':     return Object.assign(rec, { session:get('Session','session')||'morning', total:num(get('Total','total')), note:get('Note','note'), breakdown:(()=>{try{return JSON.parse(get('BreakdownJSON','breakdown')||'{}')}catch{return {}}})() });
+    default:         return rec;
+  }
+}
+
+// (D) إعادة بناء ملف JSONL بالكامل
+async function rewriteLocalFile(type, records) {
+  const file = FILES[type]; if (!file) throw new Error('Unknown type');
+  const lines = records.map(r => JSON.stringify(r)).join('\n') + (records.length? '\n' : '');
+  await fsp.writeFile(file, lines, 'utf8');
+}
+
+// (E) مزامنة نوع واحد: mode = 'both' | 'pull' | 'push'
+async function syncType(type, mode='both', { allowDelete=false } = {}) {
+  const emptySpec = sheetSpec(type, {}); if (!emptySpec) return { type, skipped:true };
+
+  const sheetsApi = await getSheetsClient(); if (!sheetsApi) throw new Error('Sheets disabled');
+  await ensureTabAndHeader(sheetsApi, emptySpec.name, emptySpec.headers);
+
+  const { rows: sheetRows } = await readSheetObjects(emptySpec.name);
+  const sheetMap = new Map(sheetRows.map(r => [(r.ID || r.id), r]));
+
+  const localArr = await readAll(type);
+  const localMap = new Map(localArr.map(r => [r.id, r]));
+
+  const ids = new Set([...sheetMap.keys(), ...localMap.keys()].filter(Boolean));
+
+  const finalLocal = [];
+  const changes = { type, pushed:0, pulled:0, updatedSheet:0, updatedLocal:0, deletedLocal:0, deletedSheet:0 };
+
+  for (const id of ids) {
+    const sRow = sheetMap.get(id);
+    const lRec = localMap.get(id);
+
+    if (sRow && lRec) {
+      const su = new Date(sRow.UpdatedAt || sRow.CreatedAt || 0).getTime();
+      const lu = new Date(lRec.updatedAt || lRec.createdAt || 0).getTime();
+      if (su > lu && mode !== 'push') {
+        finalLocal.push(sheetRowToRecord(type, sRow));
+        changes.updatedLocal++;
+      } else {
+        finalLocal.push(lRec);
+        if (lu > su && mode !== 'pull') changes.updatedSheet++;
+      }
+    } else if (sRow && !lRec) {
+      if (mode !== 'push') { finalLocal.push(sheetRowToRecord(type, sRow)); changes.pulled++; }
+      else if (allowDelete) { changes.deletedSheet++; }
+    } else if (!sRow && lRec) {
+      if (allowDelete && mode !== 'push') { changes.deletedLocal++; /* لا نضيفه للفاينال */ }
+      else { finalLocal.push(lRec); if (mode !== 'pull') changes.pushed++; }
+    }
+  }
+
+  // اكتب الحالة المحلية الجديدة (ما لم يكن Push فقط)
+  if (mode !== 'push') await rewriteLocalFile(type, finalLocal);
+
+  // اكتب الشيت بالصورة النهائية (ما لم يكن Pull فقط)
+  if (mode !== 'pull') {
+    const sHeaders = sheetSpec(type, {}).headers;
+    const rows = finalLocal.map(rec => sheetSpec(type, rec).row);
+    await sheetsApi.spreadsheets.values.clear({
+      spreadsheetId: SPREADSHEET_ID, range: `${emptySpec.name}!A:Z`
+    });
+    await sheetsApi.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${emptySpec.name}!A1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [sHeaders, ...rows] }
+    });
+  }
+
+  return changes;
+}
+
+async function syncMany(types, mode='both', opts={}) {
+  const out = [];
+  for (const t of types) {
+    try { out.push(await syncType(t, mode, opts)); }
+    catch (e) { out.push({ type:t, error:e.message }); }
+  }
+  return out;
+}
+
+// (F) Endpoints للمزامنة اليدوية
+app.post('/api/sheets/sync', async (req,res)=>{
+  try{
+    const { types=['sales','expenses','credits','cash'], mode='both', allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
+    const result = await syncMany(types, mode, { allowDelete });
+    res.json({ ok:true, mode, result });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+
+app.post('/api/sheets/pull', async (req,res)=>{
+  try{
+    const { types=['sales','expenses','credits','cash'], allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
+    const result = await syncMany(types, 'pull', { allowDelete });
+    res.json({ ok:true, result });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+
+app.post('/api/sheets/push', async (req,res)=>{
+  try{
+    const { types=['sales','expenses','credits','cash'], allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
+    const result = await syncMany(types, 'push', { allowDelete });
+    res.json({ ok:true, result });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// (G) Polling اختياري حسب SHEETS_POLL_MS
+if (SHEETS_POLL_MS > 0) {
+  setInterval(() => {
+    syncMany(['sales','expenses','credits','cash'], 'pull', { allowDelete: SHEETS_ALLOW_DELETE })
+      .catch(e => console.warn('[Sheets] polling sync error:', e.message));
+  }, SHEETS_POLL_MS);
 }
 
 // ---------- Middleware ----------
@@ -270,7 +474,6 @@ const handleAdd = (type, mapper) => async (req,res)=>{
 
 // ===== Sales =====
 const addSale = handleAdd('sales', b=>({
-  // الواجهة الآن لا ترسل منتج/كمية/سعر وحدة — لا مشكلة لو كانت فارغة
   product: b.product||'',
   quantity: Number(b.quantity||0),
   unitPrice: Number(b.unitPrice||0),
@@ -320,7 +523,6 @@ const addCredit = handleAdd('credits', b=>{
 app.post('/api/credits/add', addCredit);
 app.post('/save-credit', addCredit);
 
-// credit payment (reduces outstanding)
 const addCreditPayment = handleAdd('credit_payments', b=>({
   customer: b.customer||'',
   paid: Number(b.paid||b.amount||0),
@@ -348,7 +550,6 @@ const addOrder = handleAdd('orders', b=>{
 app.post('/api/orders/add', addOrder);
 app.post('/save-order', addOrder);
 
-// update order status (append event)
 app.post('/api/orders/status', async (req,res)=>{
   try{
     const { id, status } = req.body||{};
@@ -360,14 +561,12 @@ app.post('/api/orders/status', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// pay part of an order (creates orders_payments + a sales entry "from order")
 app.post('/api/orders/pay', async (req,res)=>{
   try{
     const { id, amount, method } = req.body||{};
     const amt = Number(amount||0);
     if(!id || !(amt>0)) return res.status(400).json({ ok:false, error:'id & positive amount required' });
 
-    // find base order and current paid
     const orders = await readAll('orders');
     const base = orders.find(o=>o.id===id);
     if(!base) return res.status(404).json({ ok:false, error:'order not found' });
@@ -377,7 +576,6 @@ app.post('/api/orders/pay', async (req,res)=>{
     const remaining = Math.max(0, (+base.amount||0) - alreadyPaid);
     if(amt > remaining) return res.status(400).json({ ok:false, error:'amount exceeds remaining' });
 
-    // append orders_payments
     const payRec = {
       id: newId(),
       orderId: id,
@@ -389,7 +587,6 @@ app.post('/api/orders/pay', async (req,res)=>{
     await appendRecord('orders_payments', payRec);
     io.emit('new-record', { type:'orders_payments', record: payRec });
 
-    // create sales entry
     const saleRec = {
       id: newId(),
       dateISO: todayISO(),
@@ -406,7 +603,7 @@ app.post('/api/orders/pay', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// orders list: join with latest status + payments to compute paid/remaining
+// orders list
 app.get('/api/orders/list', async (req,res)=>{
   try{
     const base = filterByQuery(await readAll('orders'), req.query||{});
@@ -442,7 +639,7 @@ app.post('/api/cash/add', async (req,res)=>{
       id: newId(),
       dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
-      session: b.session || 'morning', // 'morning' | 'evening' | 'eod'
+      session: b.session || 'morning',
       breakdown: b.breakdown || {},
       total: Number(b.total||0),
       note: b.note || ''
@@ -534,12 +731,10 @@ app.post('/api/invoices/create', async (req,res)=>{
     const filePath = path.join(INVOICE_DIR, `${invId}.pdf`);
     const publicUrl = `/invoices/${invId}.pdf`;
 
-    // generate
     const doc = new PDFDocument({ margin: 36 });
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // Header
     doc.fontSize(18).text('Zaad Bakery — Invoice', {align:'center'}).moveDown(0.5);
     doc.fontSize(11).text(`Invoice ID: ${invId}`);
     doc.text(`Date: ${todayISO()}`);
@@ -547,7 +742,6 @@ app.post('/api/invoices/create', async (req,res)=>{
     if(clientPhone) doc.text(`Phone: ${clientPhone}`);
     doc.moveDown();
 
-    // Table
     doc.fontSize(12);
     doc.text('Items:', {underline:true});
     doc.moveDown(0.3);
@@ -563,13 +757,11 @@ app.post('/api/invoices/create', async (req,res)=>{
     doc.moveDown();
     doc.fontSize(14).text(`Total: ${sub.toFixed(2)}`, {align:'right'}).moveDown();
 
-    // Footer / Thanks
     doc.fontSize(11).text('Thank you for your purchase! We appreciate your business.', {align:'center'});
     doc.end();
 
     await new Promise((ok,fail)=>{ stream.on('finish',ok); stream.on('error',fail); });
 
-    // Build absolute URL + WhatsApp link
     const scheme = (req.headers['x-forwarded-proto'] || req.protocol || 'http');
     const host   = req.get('host');
     const absUrl = `${scheme}://${host}${publicUrl}`;
