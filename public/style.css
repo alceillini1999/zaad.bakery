@@ -1,55 +1,26 @@
-/* Zaad theme (logo colors): brown / gold / cream */
 :root{
-  --brand:#6f3b1f;       /* بني */
-  --brand-2:#d4a24c;     /* ذهبي */
-  --bg:#fff8ef;          /* كريمي فاتح */
-  --ink:#3b2b1f;
+  /* brown + gold + soft paper */
+  --brand:#7a4b2b;
+  --brand-2:#c89a58;
+  --bg:#fffaf2;
+  --ink:#1f2540;
 }
-
-*{font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-body{background:var(--bg);color:var(--ink);min-height:100vh;position:relative}
-
-/* elegant soft background */
-body::before{
-  content:"";
-  position:fixed; inset:0; z-index:-1;
-  background:
-    radial-gradient(1200px 600px at 100% -10%, rgba(212,162,76,.12), transparent 60%),
-    radial-gradient(800px 400px at -10% 100%, rgba(111,59,31,.10), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,.7));
-  backdrop-filter: blur(.2px);
-}
-
-/* brand accents */
+*{font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+body{background:linear-gradient(180deg,#f7efe1 0%, #fff 40%);color:var(--ink);}
 .brand-pills .nav-link{border-radius:999px;padding:.45rem 1rem}
-.brand-pills .nav-link.active{background:var(--brand); color:#fff}
-a, .link-primary{color:var(--brand)}
-.btn-primary{background:var(--brand);border-color:var(--brand)}
-.btn-primary:hover{background:#5e331a;border-color:#5e331a}
+.brand-pills .nav-link.active{background:var(--brand)}
 .card{border:0;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-.card-header{border-bottom-color:#eee}
-
-/* table tweaks */
 .table> :not(caption)>*>*{padding:.65rem .75rem}
-.table thead th{font-weight:600;cursor:pointer;user-select:none}
-.table thead th.sorted-asc::after{content:" ▲";font-size:.8em;color:#888}
-.table thead th.sorted-desc::after{content:" ▼";font-size:.8em;color:#888}
-
-/* badges */
-.badge-method{font-weight:600}
-.badge-Cash{background:#fff2e1;color:#7a4d1e;border:1px solid #f3d7a6}
-.badge-Withdrawal{background:#fff7e6;color:#a76a00;border:1px solid #ffe3b0}
-.badge-Till{background:#fff0d9;color:#8b5e3c;border:1px solid #f4d9a9}
-.badge-Send{background:#efe1ff;color:#6f42c1;border:1px solid #e4d4ff}
-
-/* skeleton */
-.skeleton td{position:relative;color:transparent}
-.skeleton td::after{content:"";position:absolute;inset:6px;border-radius:6px;background:linear-gradient(90deg,#eee,#f5f5f5,#eee);background-size:200% 100%;animation:sh 1.2s infinite}
-@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* dark mode */
+.table thead th{font-weight:600}
 .dark body{background:#0f1222;color:#d9ddff}
 .dark .navbar,.dark .card,.dark .table,.dark .table thead{background:#161a2f!important;color:#cfd3ff}
 .dark .card-header{background:#161a2f!important}
 .dark .form-control,.dark .form-select,.dark .form-check-label{background:#101327;color:#d9ddff;border-color:#2a2f4e}
 .dark .table{color:#d9ddff}
+.badge-method{font-weight:600}
+.badge-Cash{background:#e8fff2;color:#0a7a2d;border:1px solid #bdf0d0}
+.badge-Withdrawal{background:#fff7e6;color:#a76a00;border:1px solid #ffe3b0}
+.badge-Till{background:#eaf3ff;color:#0b5ed7;border:1px solid #cfe0ff}
+.badge-Send{background:#f3e8ff;color:#6f42c1;border:1px solid #e4d4ff}
+.navbar-brand span{color:var(--brand)}
+.mini-stat{border-left:4px solid var(--brand-2)}

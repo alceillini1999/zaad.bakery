@@ -3,10 +3,8 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
 const fmt = v => (Number(v||0)).toFixed(2);
-
 function todayISO(){ return new Date().toISOString().slice(0,10); }
 function randomId(){ return ('INV-' + (Date.now().toString(36) + Math.random().toString(36).slice(2,6)).toUpperCase()); }
-
 let INV_ID = randomId();
 
 function addRow(name='', price='', qty='1'){
@@ -23,7 +21,6 @@ function addRow(name='', price='', qty='1'){
   tr.querySelector('.del').addEventListener('click', ()=>{ tr.remove(); recalc(); });
   recalc();
 }
-
 function getItems(){
   return $$('#itemsBody tr').map(tr=>{
     const name = tr.querySelector('.name').value.trim();
@@ -32,7 +29,6 @@ function getItems(){
     return { name, price, qty, lineTotal: +(price*qty).toFixed(2) };
   }).filter(x=>x.name && x.qty>0);
 }
-
 function recalc(){
   let sub=0;
   $$('#itemsBody tr').forEach(tr=>{
@@ -45,44 +41,40 @@ function recalc(){
   $('#subTotal').textContent = fmt(sub);
   $('#grandTotal').textContent = fmt(sub);
 }
-
 async function createPDF(){
   const phone = $('#clientPhone').value.trim();
   const name  = $('#clientName').value.trim();
   const items = getItems();
   if(!items.length) { alert('Add at least one item.'); return null; }
-
-  // POST to create invoice PDF
   const res = await fetch('/api/invoices/create', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ id: INV_ID, clientPhone: phone, clientName: name, items })
   }).then(r=>r.json());
-
   if(!res?.ok){ alert(res?.error || 'Failed to create invoice'); return null; }
-  // refresh id for next invoice
   INV_ID = res.id || INV_ID;
   $('#invIdPreview').textContent = INV_ID;
-  return res; // {ok,id,url,waLink}
+  return res;
 }
-
-// UI handlers
 $('#btnAddRow').addEventListener('click', (e)=>{ e.preventDefault(); addRow(); });
 $('#btnDownload').addEventListener('click', async (e)=>{
   e.preventDefault();
   const r = await createPDF(); if(!r) return;
   $('#btnDownload').href = r.url;
-  // trigger download
   window.open(r.url, '_blank');
 });
 $('#btnWhatsApp').addEventListener('click', async ()=>{
   const r = await createPDF(); if(!r) return;
   window.open(r.waLink, '_blank');
 });
-
-// boot
 document.addEventListener('DOMContentLoaded', ()=>{
   $('#invDate').textContent = todayISO();
   $('#invIdPreview').textContent = INV_ID;
-  addRow();
+
+  // Prefill from URL (من زر Orders > Invoice)
+  const url = new URL(location.href);
+  const phone = url.searchParams.get('phone')||'';
+  const item  = url.searchParams.get('item')||'';
+  const price = url.searchParams.get('price')||'';
+  if(phone) $('#clientPhone').value = phone;
+  if(item || price) addRow(item, price||'', 1); else addRow();
 });

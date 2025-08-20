@@ -1,29 +1,24 @@
-/* Zaad Bakery Pro Frontend (orders payment enabled) */
+/* Zaad Bakery Pro Frontend */
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const api = (p, opts={}) => fetch(p, Object.assign({headers:{'Content-Type':'application/json'}}, opts)).then(r => r.json());
 const today = () => new Date().toISOString().slice(0,10);
-
 const toast = new bootstrap.Toast($('#appToast'), { delay: 1600 });
 const showToast = (msg, ok=true) => {
   const t=$('#appToast'); t.classList.toggle('text-bg-success', ok); t.classList.toggle('text-bg-danger', !ok);
   t.querySelector('.toast-body').innerHTML=msg; toast.show();
 };
-
-const ioClient = io();
-ioClient.on('new-record', ({type})=>{
+const ioClient = io(); ioClient.on('new-record', ({type})=>{
   const active = document.querySelector('.tab-pane.active')?.id || '';
-  if (active==='tabSales'   && type==='sales') loadSales();
-  if (active==='tabExpenses'&& type==='expenses') loadExpenses();
+  if (active==='tabSales'   && (type==='sales')) loadSales();
+  if (active==='tabExpenses'&& (type==='expenses')) loadExpenses();
   if (active==='tabCredit'  && (type==='credits' || type==='credit_payments')) loadCredit();
-  if (active==='tabOrders'  && (type==='orders'  || type==='orders_status' || type==='orders_payments')) loadOrders();
-  if (active==='tabCash'    && type==='cash') loadCash();
+  if (active==='tabOrders'  && (type==='orders' || type==='orders_status' || type==='orders_payments' || type==='sales')) loadOrders();
+  if (active==='tabCash'    && (type==='cash')) loadCash();
 });
-
 $('#themeSwitch')?.addEventListener('change',e=>document.documentElement.classList.toggle('dark', e.target.checked));
 $('#btnShare')?.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(location.href); showToast('<i class="bi bi-clipboard-check"></i> Link copied'); }catch{ showToast('Copy failed',false);} });
 
-/* Helpers */
 function badgeFor(method){
   if (!method) return '';
   const m=(method+'').toLowerCase();
@@ -32,45 +27,8 @@ function badgeFor(method){
   if (m.includes('send')) return `<span class="badge badge-method badge-Send">Send</span>`;
   return `<span class="badge badge-method badge-Cash">Cash</span>`;
 }
-function tableFilter(input, tbody){
-  input?.addEventListener('input', ()=>{
-    const q=input.value.toLowerCase().trim();
-    $$(tbody+' tr').forEach(tr=>{ tr.style.display = tr.innerText.toLowerCase().includes(q)? '' : 'none'; });
-  });
-}
-function enableSort(sel){
-  const table=$(sel); if(!table || !table.tHead) return;
-  const ths=[...table.tHead.rows[0].cells];
-  ths.forEach((th,i)=>{
-    const type=th.dataset.sort||'text';
-    th.addEventListener('click', ()=>{
-      const dir = th.classList.contains('sorted-asc')? 'desc':'asc';
-      ths.forEach(h=>h.classList.remove('sorted-asc','sorted-desc'));
-      th.classList.add(dir==='asc'?'sorted-asc':'sorted-desc');
-      const rows = [...table.tBodies[0].rows];
-      const val = r => r.cells[i].innerText.trim();
-      rows.sort((a,b)=>{
-        const va=val(a), vb=val(b);
-        if(type==='num') return (+va||0)-(+vb||0);
-        if(type==='date') return va.localeCompare(vb);
-        return va.localeCompare(vb);
-      });
-      if(dir==='desc') rows.reverse();
-      rows.forEach(r=>table.tBodies[0].appendChild(r));
-    });
-  });
-}
 
-/* ================= SALES ================= */
-function bindSaleCalc(){
-  $('#formSale')?.addEventListener('input', (e)=>{
-    if (['unitPrice','amount'].includes(e.target.name)){
-      const u=parseFloat($('#formSale [name="unitPrice"]').value||'0');
-      const a=$('#formSale [name="amount"]').value;
-      if(!a) $('#formSale [name="amount"]').value=(u||0).toFixed(2);
-    }
-  });
-}
+/* ---------- SALES (بدون Product/Qty/Unit) ---------- */
 async function loadSales(){
   const p=new URLSearchParams();
   if($('#salesFrom').value) p.set('from',$('#salesFrom').value);
@@ -78,56 +36,50 @@ async function loadSales(){
   if($('#salesMethod').value) p.set('method',$('#salesMethod').value);
   const {rows=[]}=await api('/api/sales/list?'+p.toString());
   const tb=$('#tblSalesBody');
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="5" class="text-secondary p-4">No data.</td></tr>`; return;}
-  tb.innerHTML = rows.map(r=>`
-    <tr>
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
       <td>${(r.dateISO||'').slice(0,10)}</td>
-      <td class="text-end">${r.unitPrice?Number(r.unitPrice).toFixed(2):''}</td>
       <td class="text-end fw-semibold">${Number(r.amount||0).toFixed(2)}</td>
       <td>${badgeFor(r.method)}</td>
       <td>${r.note||''}</td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
 }
 $('#btnSalesFilter')?.addEventListener('click', loadSales);
-tableFilter($('#salesSearch'), '#tblSalesBody');
 $('#btnSalesExport')?.addEventListener('click', (e)=>{
   e.target.href=`/api/sales/export?from=${$('#salesFrom').value||''}&to=${$('#salesTo').value||''}&method=${$('#salesMethod').value||''}`;
 });
 $('#formSale')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const fd=new FormData(e.target); const body=Object.fromEntries(fd.entries());
-  body.unitPrice=Number(body.unitPrice||0);
-  if(!body.amount || Number(body.amount)===0) body.amount=(body.unitPrice).toFixed(2);
+  body.amount = Number(body.amount||0);
+  if(!(body.amount>0)) return showToast('Enter amount', false);
   const res=await api('/api/sales/add',{method:'POST',body:JSON.stringify(body)});
   if(res.ok){ e.target.reset(); showToast('Sale saved'); loadSales(); } else showToast(res.error||'Failed',false);
 });
 
-/* ================= EXPENSES ================= */
+/* ---------- EXPENSES (مع صورة) ---------- */
 async function loadExpenses(){
   const {rows=[]}=await api('/api/expenses/list');
   const tb=$('#tblExpensesBody');
   if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; return;}
-  tb.innerHTML = rows.map(r=>`
-    <tr>
-      <td>${(r.dateISO||'').slice(0,10)}</td>
-      <td>${r.item||''}</td>
-      <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
-      <td>${badgeFor(r.method)}</td>
-      <td>${r.note||''}</td>
-      <td>${r.receiptPath? `<a href="${r.receiptPath}" target="_blank"><img src="${r.receiptPath}" alt="receipt" style="height:36px;border-radius:6px"/></a>` : ''}</td>
-    </tr>
-  `).join('');
+  tb.innerHTML = rows.map(r=>`<tr>
+    <td>${(r.dateISO||'').slice(0,10)}</td>
+    <td>${r.item||''}</td>
+    <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
+    <td>${badgeFor(r.method)}</td>
+    <td>${r.receiptPath?`<a href="${r.receiptPath}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>`:''}</td>
+    <td>${r.note||''}</td>
+  </tr>`).join('');
 }
-tableFilter($('#expSearch'), '#tblExpensesBody');
 $('#formExpense')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd=new FormData(e.target); // contains file if chosen
-  const res = await fetch('/api/expenses/add', { method:'POST', body: fd }).then(r=>r.json());
-  if(res.ok){ e.target.reset(); showToast('Expense saved'); loadExpenses(); } else showToast(res.error||'Failed',false);
+  const form = e.target;
+  const formData = new FormData(form); // يرسل ملف receipt إن وجد
+  const res = await fetch('/api/expenses/add',{method:'POST', body: formData}).then(r=>r.json());
+  if(res.ok){ form.reset(); showToast('Expense saved'); loadExpenses(); } else showToast(res.error||'Failed',false);
 });
 
-/* ================= CREDIT + PAYMENTS ================= */
+/* ---------- CREDIT + PAYMENTS ---------- */
 async function loadCredit(){
   const [credits, payments] = await Promise.all([
     api('/api/credits/list'),
@@ -135,38 +87,36 @@ async function loadCredit(){
   ]);
   const rows=credits.rows||[], pays=payments.rows||[];
   const tb=$('#tblCreditBody');
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; }
-  else {
-    tb.innerHTML = rows.map(r=>`<tr>
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; return; }
+
+  // جمع المدفوعات لكل عميل
+  const paysBy = {};
+  pays.forEach(p=>{ const k=(p.customer||'').trim(); paysBy[k]=(paysBy[k]||0)+(+p.paid||0); });
+
+  tb.innerHTML = rows.map(r=>{
+    const name = r.customer||'';
+    const paidNow = (+r.paid||0) + (paysBy[name]||0);
+    const remaining = Math.max(0,(+r.amount||0)-paidNow);
+    return `<tr>
       <td>${(r.dateISO||'').slice(0,10)}</td>
-      <td>${r.customer||''}</td>
+      <td>${name}</td>
       <td>${r.item||''}</td>
       <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
-      <td class="text-end">${Number(r.paid||0).toFixed(2)}</td>
-      <td class="text-end fw-semibold">${Number(r.remaining||0).toFixed(2)}</td>
-      <td>${r.note||''}</td>
-    </tr>`).join('');
-  }
+      <td class="text-end">${Number(paidNow).toFixed(2)}</td>
+      <td class="text-end fw-semibold">${Number(remaining).toFixed(2)}</td>
+      <td><button class="btn btn-sm btn-outline-primary btnCrPay" data-name="${encodeURIComponent(name)}">Pay</button></td>
+    </tr>`;
+  }).join('');
 
-  // Outstanding & Top 5
-  const byCust = {};
-  rows.forEach(r=>{
-    const name=(r.customer||'').trim(); if(!name) return;
-    if(!byCust[name]) byCust[name]={credit:0, pay:0};
-    byCust[name].credit += (+r.amount||0) - (+r.paid||0);
+  // زر دفع من الجدول
+  $$('.btnCrPay').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const name=decodeURIComponent(b.dataset.name||'');
+      const f=$('#formPay'); f.customer.value=name;
+      new bootstrap.Modal($('#payModal')).show();
+    });
   });
-  pays.forEach(p=>{
-    const name=(p.customer||'').trim(); if(!name) return;
-    if(!byCust[name]) byCust[name]={credit:0, pay:0};
-    byCust[name].pay += (+p.paid||0);
-  });
-  const arr = Object.entries(byCust).map(([name,v])=>({ name, outstanding: (v.credit - v.pay) }));
-  arr.sort((a,b)=>b.outstanding-a.outstanding);
-  const outstanding = arr.reduce((s,x)=>s+(x.outstanding>0?x.outstanding:0),0);
-  $('#crOutstanding').textContent = outstanding.toFixed(2);
-  $('#crTop5').innerHTML = arr.slice(0,5).map(x=>`<li>${x.name} — <strong>${x.outstanding.toFixed(2)}</strong></li>`).join('');
 }
-tableFilter($('#crSearch'), '#tblCreditBody');
 $('#formCredit')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
@@ -177,36 +127,39 @@ $('#formPay')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
   const res=await api('/api/credits/pay',{method:'POST',body:JSON.stringify(body)});
-  if(res.ok){ e.target.reset(); bootstrap.Modal.getInstance($('#payModal'))?.hide(); showToast('Payment recorded'); loadCredit(); } else showToast(res.error||'Failed',false);
+  if(res.ok){ e.target.reset(); bootstrap.Modal.getInstance($('#payModal'))?.hide(); showToast('Payment recorded'); loadCredit(); loadSales(); } else showToast(res.error||'Failed',false);
 });
 
-/* ================= ORDERS + STATUS + PAYMENTS ================= */
+/* ---------- ORDERS + STATUS + PAY + INVOICE ---------- */
 const ORDER_FLOW=['Pending','In-Progress','Done','Delivered'];
 async function loadOrders(){
   const {rows=[]}=await api('/api/orders/list');
-  const statusFilter = $('#orStatusFilter')?.value || '';
-  const list = statusFilter ? rows.filter(r=> (r.status||'Pending')===statusFilter) : rows;
+  const statusFilter = $('#orStatusFilter').value;
+  let list = rows;
+  if (statusFilter) list = list.filter(r=> (r.status||'Pending')===statusFilter);
   const tb=$('#tblOrdersBody');
   if(!list.length){ tb.innerHTML=`<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`; return;}
+
   tb.innerHTML = list.map(r=>{
     const next = ORDER_FLOW[(ORDER_FLOW.indexOf(r.status||'Pending')+1)%ORDER_FLOW.length];
-    const canPay = (+r.remaining||0) > 0;
-    return `<tr data-id="${r.id}" data-phone="${r.phone||''}" data-item="${r.item||''}" data-remaining="${Number(r.remaining||0).toFixed(2)}">
+    const q = new URLSearchParams({ phone: r.phone||'', item: r.item||'', price: r.amount||0 });
+    return `<tr data-id="${r.id}" data-remaining="${Number(r.remaining||0).toFixed(2)}" data-phone="${r.phone||''}" data-item="${r.item||''}">
       <td>${(r.dateISO||'').slice(0,10)}</td>
-      <td class="order-phone ${canPay?'text-primary':''}" style="cursor:${canPay?'pointer':'default'}">${r.phone||''}</td>
+      <td>${r.phone||''}</td>
       <td>${r.item||''}</td>
       <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
       <td class="text-end">${Number(r.paid||0).toFixed(2)}</td>
       <td class="text-end fw-semibold">${Number(r.remaining||0).toFixed(2)}</td>
       <td><span class="badge text-bg-${r.status==='Delivered'?'success':r.status==='Done'?'primary':r.status==='In-Progress'?'warning text-dark':'secondary'}">${r.status||'Pending'}</span></td>
-      <td class="d-flex gap-2">
-        ${canPay?'<button class="btn btn-sm btn-primary btnOrderPay"><i class="bi bi-cash-coin"></i> Pay</button>':''}
+      <td class="d-flex gap-1 flex-wrap">
         <button class="btn btn-sm btn-outline-secondary btnNext">Next → ${next}</button>
+        <button class="btn btn-sm btn-outline-primary btnPay">Pay</button>
+        <a class="btn btn-sm btn-outline-dark" href="/invoice.html?${q.toString()}" target="_blank"><i class="bi bi-whatsapp"></i> Invoice</a>
       </td>
     </tr>`;
   }).join('');
 
-  // status next
+  // Next status
   $$('#tblOrdersBody .btnNext').forEach(btn=>{
     btn.addEventListener('click', async (ev)=>{
       const tr=ev.target.closest('tr'); const id=tr?.dataset.id; if(!id) return;
@@ -217,20 +170,19 @@ async function loadOrders(){
     });
   });
 
-  // open pay modal (click on phone OR Pay button)
-  function openPayModal(tr){
-    const id=tr.dataset.id, phone=tr.dataset.phone, item=tr.dataset.item, rem=parseFloat(tr.dataset.remaining||'0');
-    if(rem<=0) return;
-    const m=new bootstrap.Modal('#orderPayModal');
-    $('#formOrderPay [name="id"]').value=id;
-    $('#formOrderPay [name="phone"]').value=phone||'';
-    $('#formOrderPay [name="item"]').value=item||'';
-    $('#formOrderPay [name="remaining"]').value=rem.toFixed(2);
-    const amt=$('#formOrderPay [name="amount"]'); amt.value=''; amt.max=rem.toFixed(2);
-    m.show();
-  }
-  $$('#tblOrdersBody .btnOrderPay').forEach(b=>b.addEventListener('click',e=>openPayModal(e.target.closest('tr'))));
-  $$('#tblOrdersBody .order-phone').forEach(td=>td.addEventListener('click',e=>openPayModal(e.target.closest('tr'))));
+  // Pay button -> modal
+  $$('#tblOrdersBody .btnPay').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      const tr=ev.target.closest('tr');
+      $('#opId').value = tr.dataset.id;
+      $('#opPhone').value = tr.dataset.phone || '';
+      $('#opItem').value = tr.dataset.item || '';
+      $('#opRemaining').value = tr.dataset.remaining || '0.00';
+      $('#opAmount').value = tr.dataset.remaining || '0.00';
+      $('#opMethod').value = 'Cash';
+      new bootstrap.Modal($('#orderPayModal')).show();
+    });
+  });
 }
 $('#orStatusFilter')?.addEventListener('change', loadOrders);
 
@@ -242,37 +194,21 @@ $('#formOrder')?.addEventListener('submit', async e=>{
   if(res.ok){ e.target.reset(); showToast('Order saved'); loadOrders(); } else showToast(res.error||'Failed',false);
 });
 
-// submit order payment
+// order pay submit
 $('#formOrderPay')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd=new FormData(e.target);
-  const id=fd.get('id');
-  const remaining=parseFloat(fd.get('remaining')||'0');
-  const amount=parseFloat(fd.get('amount')||'0');
-  const method=fd.get('method')||'Cash';
-  const note=fd.get('note')||'';
-  if(amount<=0) return showToast('Amount must be > 0', false);
-  if(amount>remaining) return showToast('Amount exceeds remaining', false);
-
-  const res=await api('/api/orders/pay',{method:'POST', body:JSON.stringify({id, amount, method, note})});
-  if(res.ok){
-    bootstrap.Modal.getInstance($('#orderPayModal'))?.hide();
-    showToast('Payment recorded from order');
-    loadOrders();
-    // لو تبويب المبيعات مفتوح، حدّثه
-    if(document.querySelector('#tabSales.active')) loadSales();
-  }else{
-    showToast(res.error||'Failed', false);
-  }
+  const id=$('#opId').value, remain=parseFloat($('#opRemaining').value||'0'), amount=parseFloat($('#opAmount').value||'0');
+  if(amount>remain){ return showToast('Amount exceeds remaining', false); }
+  const method=$('#opMethod').value;
+  const res=await api('/api/orders/pay',{method:'POST', body:JSON.stringify({id, amount, method})});
+  if(res.ok){ bootstrap.Modal.getInstance($('#orderPayModal'))?.hide(); showToast('Order payment saved'); loadOrders(); loadSales(); } else showToast(res.error||'Failed',false);
 });
 
-/* ================= CASH ================= */
+/* ---------- CASH COUNT ---------- */
 const DEFAULT_DENOMS=[1000,500,200,100,50,40,20,10,5,1];
 function loadDenoms(){
-  const saved = localStorage.getItem('ZAAD_DENOMS');
-  let denoms = saved ? JSON.parse(saved) : DEFAULT_DENOMS;
   const wrap = $('#denoms'); wrap.innerHTML='';
-  denoms.forEach(v=>{
+  DEFAULT_DENOMS.forEach(v=>{
     const id='d_'+v;
     wrap.insertAdjacentHTML('beforeend',`
       <div class="col-6 col-md-4">
@@ -285,8 +221,7 @@ function loadDenoms(){
   updateCashTotal();
 }
 function updateCashTotal(){
-  let total=0;
-  $$('input[id^="d_"]').forEach(i=>{
+  let total=0; $$('input[id^="d_"]').forEach(i=>{
     const denom=parseInt(i.id.split('_')[1],10), qty=parseInt(i.value||'0',10);
     total += denom*qty;
   });
@@ -303,7 +238,6 @@ async function loadCash(){
     <td>${r.note||''}</td>
   </tr>`).join('');
 }
-tableFilter($('#cashSearch'), '#tblCashBody');
 $('#formCash')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const fd=new FormData(e.target);
@@ -318,7 +252,7 @@ $('#formCash')?.addEventListener('submit', async e=>{
   if(res.ok){ showToast('Cash saved'); loadCash(); } else showToast(res.error||'Failed',false);
 });
 
-/* ================= REPORTS ================= */
+/* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
 function drawSalesByMethod({cash, till, withdrawal, send}) {
   const ctx = document.getElementById('salesByMethodChart'); if(!ctx) return;
@@ -353,14 +287,13 @@ async function runReport(){
   const eod     = k.rows.filter(x=>x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
   const expected = morning + sCash - expTot;
   const diff = expected - evening;
-  const carry = Math.max(0, evening - eod);
 
   const cards = [
     ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend],
     ['Expenses', expTot], ['Credit Outstanding', crOutstanding],
     ['Orders Total', o.rows.reduce((a,r)=>a+(+r.amount||0),0)],
     ['Cash Morning', morning], ['Cash Evening', evening], ['EOD Withdrawals', eod],
-    ['Expected (Evening)', expected], ['Difference', diff], ['Carry-over Next Day', carry]
+    ['Expected (Evening)', expected], ['Difference', diff]
   ];
   $('#repCards').innerHTML = cards.map(([t,v])=>`
     <div class="col-6 col-md-4 col-xl-3">
@@ -372,21 +305,14 @@ async function runReport(){
   const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
   $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
 }
+$('#btnRunReport')?.addEventListener('click', runReport);
 
-/* Shortcuts */
-document.addEventListener('keydown', (e)=>{
-  if(!e.altKey) return; const k=e.key.toLowerCase();
-  if(k==='s'){ e.preventDefault(); $('#formSale button[type="submit"]')?.click(); }
-  if(k==='e'){ e.preventDefault(); $('#formExpense button[type="submit"]')?.click(); }
-  if(k==='c'){ e.preventDefault(); $('#formCash button[type="submit"]')?.click(); }
-  if(k==='r'){ e.preventDefault(); $('#btnRunReport')?.click(); }
-});
-
-/* Boot */
-function boot(){
+/* ---------- Boot ---------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // default dates
   ['salesFrom','salesTo','repFrom','repTo'].forEach(id=>{ if($('#'+id)) $('#'+id).value=today(); });
-  bindSaleCalc(); loadDenoms();
+  loadDenoms();
+
+  // load lists initially
   loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
-  enableSort('#tblSales'); enableSort('#tblExp'); enableSort('#tblCr'); enableSort('#tblOr'); enableSort('#tblCash');
-}
-document.addEventListener('DOMContentLoaded', boot);
+});
