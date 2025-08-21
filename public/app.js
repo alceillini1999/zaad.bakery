@@ -284,7 +284,7 @@ async function runReport(){
   const crOutstanding = crGross - crPays;
   const morning = k.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
   const evening = k.rows.filter(x=>x.session==='evening').reduce((a,r)=>a+(+r.total||0),0);
-  const eod     = k.rows.filter(x=>x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
+  const eod     = k.rows.filter(x=>x.session==='withdraw_out' || x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
   const expected = morning + sCash - expTot;
   const diff = expected - evening;
 
@@ -292,7 +292,7 @@ async function runReport(){
     ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend],
     ['Expenses', expTot], ['Credit Outstanding', crOutstanding],
     ['Orders Total', o.rows.reduce((a,r)=>a+(+r.amount||0),0)],
-    ['Cash Morning', morning], ['Cash Evening', evening], ['EOD Withdrawals', eod],
+    ['Cash Morning', morning], ['Cash Evening', evening], ['Withdrawal Out', eod],
     ['Expected (Evening)', expected], ['Difference', diff]
   ];
   $('#repCards').innerHTML = cards.map(([t,v])=>`
