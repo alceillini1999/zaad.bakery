@@ -264,6 +264,7 @@ async function appendRecord(type, obj) {
 /* ===== Two-way Sync (Google Sheet <-> Local JSONL) ===== */
 const SHEETS_POLL_MS = Number(process.env.SHEETS_POLL_MS || 0); // مثال: 5000 = كل 5 ثواني
 const SHEETS_ALLOW_DELETE = String(process.env.SHEETS_ALLOW_DELETE || 'false').toLowerCase() === 'true';
+const SHEETS_POLL_DELETE = String(process.env.SHEETS_POLL_DELETE || 'false').toLowerCase() === 'true'; // ← جديد
 
 // (A) توسعة sheetSpec لإضافة UpdatedAt تلقائيًا وإخراج الصف حسب ترتيب العناوين
 const _sheetSpecOrig = sheetSpec;
@@ -465,10 +466,10 @@ app.post('/api/sheets/push', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// (G) Polling اختياري حسب SHEETS_POLL_MS — نمنع الحذف أثناء السحب التلقائي
+// (G) Polling اختياري حسب SHEETS_POLL_MS — يستخدم متغير SHEETS_POLL_DELETE للحذف التلقائي
 if (SHEETS_POLL_MS > 0) {
   setInterval(() => {
-    syncMany(['sales','expenses','credits','cash'], 'pull', { allowDelete: false })
+    syncMany(['sales','expenses','credits','cash'], 'pull', { allowDelete: SHEETS_POLL_DELETE })
       .catch(e => console.warn('[Sheets] polling sync error:', e.message));
   }, SHEETS_POLL_MS);
 }
