@@ -166,43 +166,43 @@ function sheetSpec(type, r) {
   switch (type) {
     case 'sales': return {
       name: tab('Sales'),
-      headers: ['ID','DateISO','CreatedAt','Product','Quantity','UnitPrice','Amount','Method','Note','Source'],
-      row: [r.id, r.dateISO, r.createdAt, r.product||'', normNum(r.quantity), normNum(r.unitPrice), normNum(r.amount), r.method||'', r.note||'', r.source||'']
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Product','Quantity','UnitPrice','Amount','Method','Note','Source'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.product||'', normNum(r.quantity), normNum(r.unitPrice), normNum(r.amount), r.method||'', r.note||'', r.source||'']
     };
     case 'expenses': return {
       name: tab('Expenses'),
-      headers: ['ID','DateISO','CreatedAt','Item','Amount','Method','Note','ReceiptPath'],
-      row: [r.id, r.dateISO, r.createdAt, r.item||'', normNum(r.amount), r.method||'', r.note||'', r.receiptPath||'']
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Item','Amount','Method','Note','ReceiptPath'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.item||'', normNum(r.amount), r.method||'', r.note||'', r.receiptPath||'']
     };
     case 'credits': return {
       name: tab('Credits'),
-      headers: ['ID','DateISO','CreatedAt','Customer','Item','Amount','Paid','Remaining','Note','PaymentDateISO'],
-      row: [r.id, r.dateISO, r.createdAt, r.customer||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.note||'', r.paymentDateISO||'']
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Customer','Item','Amount','Paid','Remaining','Note','PaymentDateISO'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.customer||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.note||'', r.paymentDateISO||'']
     };
     case 'credit_payments': return {
       name: tab('CreditPayments'),
-      headers: ['ID','DateISO','CreatedAt','Customer','Paid','Note'],
-      row: [r.id, r.dateISO, r.createdAt, r.customer||'', normNum(r.paid), r.note||'']
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Customer','Paid','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.customer||'', normNum(r.paid), r.note||'']
     };
     case 'orders': return {
       name: tab('Orders'),
-      headers: ['ID','DateISO','CreatedAt','Phone','Item','Amount','Paid','Remaining','Status','Note'],
-      row: [r.id, r.dateISO, r.createdAt, r.phone||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.status||'', r.note||'']
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Phone','Item','Amount','Paid','Remaining','Status','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.phone||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.status||'', r.note||'']
     };
     case 'orders_status': return {
       name: tab('OrdersStatus'),
-      headers: ['OrderId','Status','DateISO','CreatedAt'],
-      row: [r.id, r.status||'', r.dateISO, r.createdAt]
+      headers: ['OrderId','Status','DateISO','CreatedAt','UpdatedAt'],
+      row: [r.id, r.status||'', r.dateISO, r.createdAt, r.updatedAt || r.createdAt]
     };
     case 'orders_payments': return {
       name: tab('OrdersPayments'),
-      headers: ['ID','DateISO','CreatedAt','OrderId','Amount','Method'],
-      row: [r.id, r.dateISO, r.createdAt, r.orderId||'', normNum(r.amount), r.method||'']
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','OrderId','Amount','Method'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.orderId||'', normNum(r.amount), r.method||'']
     };
     case 'cash': return {
       name: tab('Cash'),
-      headers: ['ID','DateISO','CreatedAt','Session','Total','Note','BreakdownJSON'],
-      row: [r.id, r.dateISO, r.createdAt, r.session||'', normNum(r.total), r.note||'', JSON.stringify(r.breakdown||{})]
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Session','Total','Note','BreakdownJSON'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.session||'', normNum(r.total), r.note||'', JSON.stringify(r.breakdown||{})]
     };
     default: return null;
   }
@@ -266,58 +266,6 @@ const SHEETS_POLL_MS = Number(process.env.SHEETS_POLL_MS || 0); // مثال: 500
 const SHEETS_ALLOW_DELETE = String(process.env.SHEETS_ALLOW_DELETE || 'false').toLowerCase() === 'true';
 const SHEETS_POLL_DELETE = String(process.env.SHEETS_POLL_DELETE || 'false').toLowerCase() === 'true'; // ← جديد
 
-// (A) توسعة sheetSpec لإضافة UpdatedAt تلقائيًا وإخراج الصف حسب ترتيب العناوين
-const _sheetSpecOrig = sheetSpec;
-sheetSpec = function(type, r) {
-  const spec = _sheetSpecOrig(type, r || {});
-  if (!spec) return spec;
-
-  if (!spec.headers.includes('UpdatedAt')) {
-    const idx = Math.max(spec.headers.indexOf('CreatedAt') + 1, 3);
-    spec.headers.splice(idx, 0, 'UpdatedAt');
-  }
-
-  const createdAt = (r && (r.createdAt || r.CreatedAt)) || new Date().toISOString();
-  const updatedAt = (r && (r.updatedAt || r.UpdatedAt)) || createdAt;
-
-  const base = {
-    ID: r?.id ?? '',
-    DateISO: r?.dateISO ?? '',
-    CreatedAt: createdAt,
-    UpdatedAt: updatedAt
-  };
-
-  switch (type) {
-    case 'sales':
-      Object.assign(base, { Product:r?.product||'', Quantity:normNum(r?.quantity), UnitPrice:normNum(r?.unitPrice), Amount:normNum(r?.amount), Method:r?.method||'', Note:r?.note||'', Source:r?.source||'' });
-      break;
-    case 'expenses':
-      Object.assign(base, { Item:r?.item||'', Amount:normNum(r?.amount), Method:r?.method||'', Note:r?.note||'', ReceiptPath:r?.receiptPath||'' });
-      break;
-    case 'credits':
-      Object.assign(base, { Customer:r?.customer||'', Item:r?.item||'', Amount:normNum(r?.amount), Paid:normNum(r?.paid), Remaining:normNum(r?.remaining), Note:r?.note||'', PaymentDateISO:r?.paymentDateISO||'' });
-      break;
-    case 'credit_payments':
-      Object.assign(base, { Customer:r?.customer||'', Paid:normNum(r?.paid), Note:r?.note||'' });
-      break;
-    case 'orders':
-      Object.assign(base, { Phone:r?.phone||'', Item:r?.item||'', Amount:normNum(r?.amount), Paid:normNum(r?.paid), Remaining:normNum(r?.remaining), Status:r?.status||'', Note:r?.note||'' });
-      break;
-    case 'orders_status':
-      Object.assign(base, { OrderId:r?.id||'', Status:r?.status||'' });
-      break;
-    case 'orders_payments':
-      Object.assign(base, { OrderId:r?.orderId||'', Amount:normNum(r?.amount), Method:r?.method||'' });
-      break;
-    case 'cash':
-      Object.assign(base, { Session:r?.session||'', Total:normNum(r?.total), Note:r?.note||'', BreakdownJSON: JSON.stringify(r?.breakdown||{}) });
-      break;
-  }
-
-  spec.row = spec.headers.map(h => base[h] ?? '');
-  return spec;
-};
-
 // (B) قراءة تبويب الشيت كأوبچكتات مبنية على صف العناوين — مع UNFORMATTED_VALUE
 async function readSheetObjects(sheetName) {
   const sheets = await getSheetsClient();
@@ -339,12 +287,14 @@ async function readSheetObjects(sheetName) {
   return { headers, rows };
 }
 
-// (C) تحويل صف من الشيت إلى سجل داخلي
+// (C) تحويل صف من الشيت إلى سجل داخلي — تجاهُل الصفوف اللي مافيهاش ID
 function sheetRowToRecord(type, o) {
+  const idRaw = String(o.ID ?? o.id ?? '').trim();
+  if (!idRaw) return null; // مهم: منع إنشاء IDs جديدة لصفوف بلا ID
   const get = (k, alt) => (o[k] ?? o[alt] ?? '');
   const num = v => normNum(v);
   const rec = {
-    id: get('ID','id') || newId(),
+    id: idRaw,
     dateISO: get('DateISO','dateISO') || todayISO(),
     createdAt: get('CreatedAt','createdAt') || new Date().toISOString(),
     updatedAt: get('UpdatedAt','updatedAt') || get('CreatedAt','createdAt') || new Date().toISOString(),
@@ -372,9 +322,12 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
   const sheetsApi = await getSheetsClient(); if (!sheetsApi) throw new Error('Sheets disabled');
   await ensureTabAndHeader(sheetsApi, emptySpec.name, emptySpec.headers);
 
+  // اقرأ من الشيت، وحوّل لسجلات مع تجاهُل الصفوف بلا ID
   const { rows: sheetRows } = await readSheetObjects(emptySpec.name);
-  const sheetMap = new Map(sheetRows.map(r => [(r.ID || r.id), r]));
+  const sheetRecs = sheetRows.map(r => sheetRowToRecord(type, r)).filter(Boolean);
+  const sheetMap = new Map(sheetRecs.map(r => [r.id, r]));
 
+  // محلي
   const localArr = await readAll(type);
   const localMap = new Map(localArr.map(r => [r.id, r]));
 
@@ -384,28 +337,27 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
   const changes = { type, pushed:0, pulled:0, updatedSheet:0, updatedLocal:0, deletedLocal:0, deletedSheet:0 };
 
   for (const id of ids) {
-    const sRow = sheetMap.get(id);
+    const sRec = sheetMap.get(id); // ← بقى record جاهز
     const lRec = localMap.get(id);
 
-    if (sRow && lRec) {
-      const su = new Date(sRow.UpdatedAt || sRow.CreatedAt || 0).getTime();
+    if (sRec && lRec) {
+      const su = new Date(sRec.updatedAt || sRec.createdAt || 0).getTime();
       const lu = new Date(lRec.updatedAt || lRec.createdAt || 0).getTime();
       if (su > lu && mode !== 'push') {
-        finalLocal.push(sheetRowToRecord(type, sRow));
+        finalLocal.push(sRec);
         changes.updatedLocal++;
       } else {
         finalLocal.push(lRec);
         if (lu > su && mode !== 'pull') changes.updatedSheet++;
       }
-    } else if (sRow && !lRec) {
-      if (mode !== 'push') { finalLocal.push(sheetRowToRecord(type, sRow)); changes.pulled++; }
+    } else if (sRec && !lRec) {
+      if (mode !== 'push') { finalLocal.push(sRec); changes.pulled++; }
       else if (allowDelete) { changes.deletedSheet++; }
-    } else if (!sRow && lRec) {
-      // لا تحذف محليًا في وضع السحب (حتى لو allowDelete=true)
+    } else if (!sRec && lRec) {
       if (mode === 'pull') {
         finalLocal.push(lRec);
       } else if (allowDelete) {
-        changes.deletedLocal++; // حذف محلي مسموح فقط في أوضاع غير pull
+        changes.deletedLocal++; // حذف محلي (لو مسموح)
       } else {
         finalLocal.push(lRec);
         if (mode !== 'pull') changes.pushed++;
@@ -413,8 +365,10 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
     }
   }
 
+  // اكتب محلي (إلا في push-only)
   if (mode !== 'push') await rewriteLocalFile(type, finalLocal);
 
+  // اكتب الشيت (إلا في pull-only)
   if (mode !== 'pull') {
     const sHeaders = sheetSpec(type, {}).headers;
     const rows = finalLocal.map(rec => sheetSpec(type, rec).row);
@@ -511,6 +465,7 @@ const handleAdd = (type, mapper) => async (req,res)=>{
       dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
     }, mapper(b));
+    if (!record.updatedAt) record.updatedAt = record.createdAt;
     await appendRecord(type, record);
     io.emit('new-record', { type, record });
     res.json({ ok:true, type, record });
@@ -548,6 +503,7 @@ app.post('/api/expenses/add', upload.single('receipt'), async (req,res)=>{
       id: newId(),
       dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
       item: b.item||b.name||'',
       amount: normNum(b.amount||0),
       method: b.method||b.payment||'Cash',
@@ -599,7 +555,7 @@ app.post('/api/orders/status', async (req,res)=>{
   try{
     const { id, status } = req.body||{};
     if(!id || !status) return res.status(400).json({ ok:false, error:'id & status required' });
-    const rec = { id, status, dateISO: todayISO(), createdAt: new Date().toISOString() };
+    const rec = { id, status, dateISO: todayISO(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     await appendRecord('orders_status', rec);
     io.emit('new-record', { type:'orders_status', record: rec });
     res.json({ ok:true, record: rec });
@@ -621,13 +577,15 @@ app.post('/api/orders/pay', async (req,res)=>{
     const remaining = Math.max(0, normNum(base.amount||0) - alreadyPaid);
     if(amt > remaining) return res.status(400).json({ ok:false, error:'amount exceeds remaining' });
 
+    const now = new Date().toISOString();
     const payRec = {
       id: newId(),
       orderId: id,
       amount: amt,
       method: method || 'Cash',
       dateISO: todayISO(),
-      createdAt: new Date().toISOString()
+      createdAt: now,
+      updatedAt: now
     };
     await appendRecord('orders_payments', payRec);
     io.emit('new-record', { type:'orders_payments', record: payRec });
@@ -635,7 +593,8 @@ app.post('/api/orders/pay', async (req,res)=>{
     const saleRec = {
       id: newId(),
       dateISO: todayISO(),
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
       amount: amt,
       method: method || 'Cash',
       note: `from order ${id}`,
@@ -684,6 +643,7 @@ app.post('/api/cash/add', async (req,res)=>{
       id: newId(),
       dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
       session: b.session || 'morning',
       breakdown: b.breakdown || {},
       total: normNum(b.total||0),
