@@ -317,11 +317,16 @@ sheetSpec = function(type, r) {
   return spec;
 };
 
-// (B) قراءة تبويب الشيت كأوبچكتات مبنية على صف العناوين
+// (B) قراءة تبويب الشيت كأوبچكتات مبنية على صف العناوين — مع UNFORMATTED_VALUE
 async function readSheetObjects(sheetName) {
   const sheets = await getSheetsClient();
   if (!sheets) throw new Error('Sheets disabled');
-  const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!A:Z` });
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A:Z`,
+    valueRenderOption: 'UNFORMATTED_VALUE',   // ← أرقام كأرقام بدون تنسيق
+    dateTimeRenderOption: 'FORMATTED_STRING', // ← التواريخ كـ string
+  });
   const values = resp.data.values || [];
   if (!values.length) return { headers: [], rows: [] };
   const headers = values[0];
