@@ -10,6 +10,7 @@
 // - Realtime via Socket.IO
 // - ✅ Google Sheets sync (Service Account) — per-type tabs with headers, auto-created
 // - ✅ Two-way sync (Sheets <-> Local) + polling + endpoints
+// - ✅ Local timezone dates + Arabic/locale number normalization
 
 const express = require('express');
 const path = require('path');
@@ -58,16 +59,47 @@ function ensureDirs() {
     if (!fs.existsSync(p)) fs.writeFileSync(p, '');
   }
 }
-function todayISO(d = new Date()) { return new Date(d).toISOString().slice(0,10); }
+
+// Local timezone (set LOCAL_TZ env e.g. Africa/Cairo, Asia/Riyadh)
+const LOCAL_TZ = process.env.LOCAL_TZ || process.env.TZ || 'UTC';
+function todayISO(d = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: LOCAL_TZ,
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(d); // YYYY-MM-DD
+  } catch {
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off*60000);
+    return local.toISOString().slice(0,10);
+  }
+}
 function parseToISO(input) {
   if (!input) return todayISO();
   if (typeof input === 'string') {
-    if (input.includes('/')) { const [dd,mm,yyyy]=input.split('/'); return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`; }
+    if (input.includes('/')) {
+      const [dd,mm,yyyy]=input.split('/');
+      return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    }
     return input.slice(0,10);
   }
   return todayISO(input);
 }
 function newId(){ return (Date.now().toString(36) + Math.random().toString(36).slice(2,6)).toUpperCase(); }
+
+// Normalize numbers: Arabic digits, thousands separators, Arabic decimal point
+function normNum(v){
+  if (v == null) return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v).trim();
+  const map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+  s = s.replace(/[٠-٩]/g, d => map[d]); // Arabic -> Latin
+  s = s.replace(/[٬,]/g, '');           // thousands
+  s = s.replace(/[٫]/g, '.');           // decimal
+  s = s.replace(/[^0-9.\-]/g, '');      // currency etc.
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
 
 async function readAll(type) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
@@ -135,27 +167,27 @@ function sheetSpec(type, r) {
     case 'sales': return {
       name: tab('Sales'),
       headers: ['ID','DateISO','CreatedAt','Product','Quantity','UnitPrice','Amount','Method','Note','Source'],
-      row: [r.id, r.dateISO, r.createdAt, r.product||'', +r.quantity||0, +r.unitPrice||0, +r.amount||0, r.method||'', r.note||'', r.source||'']
+      row: [r.id, r.dateISO, r.createdAt, r.product||'', normNum(r.quantity), normNum(r.unitPrice), normNum(r.amount), r.method||'', r.note||'', r.source||'']
     };
     case 'expenses': return {
       name: tab('Expenses'),
       headers: ['ID','DateISO','CreatedAt','Item','Amount','Method','Note','ReceiptPath'],
-      row: [r.id, r.dateISO, r.createdAt, r.item||'', +r.amount||0, r.method||'', r.note||'', r.receiptPath||'']
+      row: [r.id, r.dateISO, r.createdAt, r.item||'', normNum(r.amount), r.method||'', r.note||'', r.receiptPath||'']
     };
     case 'credits': return {
       name: tab('Credits'),
       headers: ['ID','DateISO','CreatedAt','Customer','Item','Amount','Paid','Remaining','Note','PaymentDateISO'],
-      row: [r.id, r.dateISO, r.createdAt, r.customer||'', r.item||'', +r.amount||0, +r.paid||0, +r.remaining||0, r.note||'', r.paymentDateISO||'']
+      row: [r.id, r.dateISO, r.createdAt, r.customer||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.note||'', r.paymentDateISO||'']
     };
     case 'credit_payments': return {
       name: tab('CreditPayments'),
       headers: ['ID','DateISO','CreatedAt','Customer','Paid','Note'],
-      row: [r.id, r.dateISO, r.createdAt, r.customer||'', +r.paid||0, r.note||'']
+      row: [r.id, r.dateISO, r.createdAt, r.customer||'', normNum(r.paid), r.note||'']
     };
     case 'orders': return {
       name: tab('Orders'),
       headers: ['ID','DateISO','CreatedAt','Phone','Item','Amount','Paid','Remaining','Status','Note'],
-      row: [r.id, r.dateISO, r.createdAt, r.phone||'', r.item||'', +r.amount||0, +r.paid||0, +r.remaining||0, r.status||'', r.note||'']
+      row: [r.id, r.dateISO, r.createdAt, r.phone||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.status||'', r.note||'']
     };
     case 'orders_status': return {
       name: tab('OrdersStatus'),
@@ -165,12 +197,12 @@ function sheetSpec(type, r) {
     case 'orders_payments': return {
       name: tab('OrdersPayments'),
       headers: ['ID','DateISO','CreatedAt','OrderId','Amount','Method'],
-      row: [r.id, r.dateISO, r.createdAt, r.orderId||'', +r.amount||0, r.method||'']
+      row: [r.id, r.dateISO, r.createdAt, r.orderId||'', normNum(r.amount), r.method||'']
     };
     case 'cash': return {
       name: tab('Cash'),
       headers: ['ID','DateISO','CreatedAt','Session','Total','Note','BreakdownJSON'],
-      row: [r.id, r.dateISO, r.createdAt, r.session||'', +r.total||0, r.note||'', JSON.stringify(r.breakdown||{})]
+      row: [r.id, r.dateISO, r.createdAt, r.session||'', normNum(r.total), r.note||'', JSON.stringify(r.breakdown||{})]
     };
     default: return null;
   }
@@ -178,7 +210,6 @@ function sheetSpec(type, r) {
 
 async function ensureTabAndHeader(sheets, sheetName, headers) {
   if (_sheetsState.knownTabs.has(sheetName)) return;
-  // ensure tab exists
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   const exists = (meta.data.sheets || []).some(s => s.properties.title === sheetName);
   if (!exists) {
@@ -187,7 +218,6 @@ async function ensureTabAndHeader(sheets, sheetName, headers) {
       requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
     });
   }
-  // ensure header row
   const hdr = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!1:1`
@@ -228,7 +258,6 @@ async function appendRecord(type, obj) {
   const file = FILES[type]; if (!file) throw new Error('Unknown type');
   if (!obj.updatedAt) obj.updatedAt = obj.createdAt || new Date().toISOString();
   const line = JSON.stringify(obj) + '\n'; await fsp.appendFile(file, line, 'utf8');
-  // fire-and-forget sheets sync
   appendToGoogleSheet(type, obj).catch(()=>{});
 }
 
@@ -259,28 +288,28 @@ sheetSpec = function(type, r) {
 
   switch (type) {
     case 'sales':
-      Object.assign(base, { Product:r?.product||'', Quantity:+(r?.quantity||0), UnitPrice:+(r?.unitPrice||0), Amount:+(r?.amount||0), Method:r?.method||'', Note:r?.note||'', Source:r?.source||'' });
+      Object.assign(base, { Product:r?.product||'', Quantity:normNum(r?.quantity), UnitPrice:normNum(r?.unitPrice), Amount:normNum(r?.amount), Method:r?.method||'', Note:r?.note||'', Source:r?.source||'' });
       break;
     case 'expenses':
-      Object.assign(base, { Item:r?.item||'', Amount:+(r?.amount||0), Method:r?.method||'', Note:r?.note||'', ReceiptPath:r?.receiptPath||'' });
+      Object.assign(base, { Item:r?.item||'', Amount:normNum(r?.amount), Method:r?.method||'', Note:r?.note||'', ReceiptPath:r?.receiptPath||'' });
       break;
     case 'credits':
-      Object.assign(base, { Customer:r?.customer||'', Item:r?.item||'', Amount:+(r?.amount||0), Paid:+(r?.paid||0), Remaining:+(r?.remaining||0), Note:r?.note||'', PaymentDateISO:r?.paymentDateISO||'' });
+      Object.assign(base, { Customer:r?.customer||'', Item:r?.item||'', Amount:normNum(r?.amount), Paid:normNum(r?.paid), Remaining:normNum(r?.remaining), Note:r?.note||'', PaymentDateISO:r?.paymentDateISO||'' });
       break;
     case 'credit_payments':
-      Object.assign(base, { Customer:r?.customer||'', Paid:+(r?.paid||0), Note:r?.note||'' });
+      Object.assign(base, { Customer:r?.customer||'', Paid:normNum(r?.paid), Note:r?.note||'' });
       break;
     case 'orders':
-      Object.assign(base, { Phone:r?.phone||'', Item:r?.item||'', Amount:+(r?.amount||0), Paid:+(r?.paid||0), Remaining:+(r?.remaining||0), Status:r?.status||'', Note:r?.note||'' });
+      Object.assign(base, { Phone:r?.phone||'', Item:r?.item||'', Amount:normNum(r?.amount), Paid:normNum(r?.paid), Remaining:normNum(r?.remaining), Status:r?.status||'', Note:r?.note||'' });
       break;
     case 'orders_status':
       Object.assign(base, { OrderId:r?.id||'', Status:r?.status||'' });
       break;
     case 'orders_payments':
-      Object.assign(base, { OrderId:r?.orderId||'', Amount:+(r?.amount||0), Method:r?.method||'' });
+      Object.assign(base, { OrderId:r?.orderId||'', Amount:normNum(r?.amount), Method:r?.method||'' });
       break;
     case 'cash':
-      Object.assign(base, { Session:r?.session||'', Total:+(r?.total||0), Note:r?.note||'', BreakdownJSON: JSON.stringify(r?.breakdown||{}) });
+      Object.assign(base, { Session:r?.session||'', Total:normNum(r?.total), Note:r?.note||'', BreakdownJSON: JSON.stringify(r?.breakdown||{}) });
       break;
   }
 
@@ -307,7 +336,7 @@ async function readSheetObjects(sheetName) {
 // (C) تحويل صف من الشيت إلى سجل داخلي
 function sheetRowToRecord(type, o) {
   const get = (k, alt) => (o[k] ?? o[alt] ?? '');
-  const num = v => (v===''||v==null) ? 0 : Number(v);
+  const num = v => normNum(v);
   const rec = {
     id: get('ID','id') || newId(),
     dateISO: get('DateISO','dateISO') || todayISO(),
@@ -366,15 +395,20 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
       if (mode !== 'push') { finalLocal.push(sheetRowToRecord(type, sRow)); changes.pulled++; }
       else if (allowDelete) { changes.deletedSheet++; }
     } else if (!sRow && lRec) {
-      if (allowDelete && mode !== 'push') { changes.deletedLocal++; /* لا نضيفه للفاينال */ }
-      else { finalLocal.push(lRec); if (mode !== 'pull') changes.pushed++; }
+      // لا تحذف محليًا في وضع السحب (حتى لو allowDelete=true)
+      if (mode === 'pull') {
+        finalLocal.push(lRec);
+      } else if (allowDelete) {
+        changes.deletedLocal++; // حذف محلي مسموح فقط في أوضاع غير pull
+      } else {
+        finalLocal.push(lRec);
+        if (mode !== 'pull') changes.pushed++;
+      }
     }
   }
 
-  // اكتب الحالة المحلية الجديدة (ما لم يكن Push فقط)
   if (mode !== 'push') await rewriteLocalFile(type, finalLocal);
 
-  // اكتب الشيت بالصورة النهائية (ما لم يكن Pull فقط)
   if (mode !== 'pull') {
     const sHeaders = sheetSpec(type, {}).headers;
     const rows = finalLocal.map(rec => sheetSpec(type, rec).row);
@@ -426,10 +460,10 @@ app.post('/api/sheets/push', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
-// (G) Polling اختياري حسب SHEETS_POLL_MS
+// (G) Polling اختياري حسب SHEETS_POLL_MS — نمنع الحذف أثناء السحب التلقائي
 if (SHEETS_POLL_MS > 0) {
   setInterval(() => {
-    syncMany(['sales','expenses','credits','cash'], 'pull', { allowDelete: SHEETS_ALLOW_DELETE })
+    syncMany(['sales','expenses','credits','cash'], 'pull', { allowDelete: false })
       .catch(e => console.warn('[Sheets] polling sync error:', e.message));
   }, SHEETS_POLL_MS);
 }
@@ -448,6 +482,11 @@ function basicAuth(req,res,next){
   res.set('WWW-Authenticate','Basic realm="Zaad Bakery"'); return res.status(401).send('Authentication required');
 }
 app.use(basicAuth);
+
+// Keep-alive ping
+app.get('/api/ping', (req,res)=>{
+  res.json({ ok:true, ts:new Date().toISOString(), uptime: process.uptime() });
+});
 
 // Static (no-cache index for fresh UI)
 app.use(express.static(path.join(__dirname, 'public'),{
@@ -475,9 +514,9 @@ const handleAdd = (type, mapper) => async (req,res)=>{
 // ===== Sales =====
 const addSale = handleAdd('sales', b=>({
   product: b.product||'',
-  quantity: Number(b.quantity||0),
-  unitPrice: Number(b.unitPrice||0),
-  amount: Number(b.amount || b.total || 0),
+  quantity: normNum(b.quantity||0),
+  unitPrice: normNum(b.unitPrice||0),
+  amount: normNum(b.amount || b.total || 0),
   method: b.method || b.payment || 'Cash',
   note: b.note || '',
   source: b.source || '', // e.g., "from order XYZ"
@@ -504,7 +543,7 @@ app.post('/api/expenses/add', upload.single('receipt'), async (req,res)=>{
       dateISO: parseToISO(b.date),
       createdAt: now.toISOString(),
       item: b.item||b.name||'',
-      amount: Number(b.amount||0),
+      amount: normNum(b.amount||0),
       method: b.method||b.payment||'Cash',
       note: b.note||'',
       receiptPath: req.file ? `/uploads/receipts/${req.file.filename}` : ''
@@ -517,7 +556,7 @@ app.post('/api/expenses/add', upload.single('receipt'), async (req,res)=>{
 
 // ===== Credits & Payments =====
 const addCredit = handleAdd('credits', b=>{
-  const paid=Number(b.paid||0), amount=Number(b.amount||0);
+  const paid=normNum(b.paid||0), amount=normNum(b.amount||0);
   return { customer:b.customer||b.name||'', item:b.item||'', amount, paid, remaining:Math.max(0, amount-paid), note:b.note||'', paymentDateISO: b.paymentDate?parseToISO(b.paymentDate):'' };
 });
 app.post('/api/credits/add', addCredit);
@@ -525,7 +564,7 @@ app.post('/save-credit', addCredit);
 
 const addCreditPayment = handleAdd('credit_payments', b=>({
   customer: b.customer||'',
-  paid: Number(b.paid||b.amount||0),
+  paid: normNum(b.paid||b.amount||0),
   note: b.note||'',
 }));
 app.post('/api/credits/pay', addCreditPayment);
@@ -538,7 +577,7 @@ app.get('/api/credits/payments/list', async (req,res)=>{
 
 // ===== Orders, Status & Payments =====
 const addOrder = handleAdd('orders', b=>{
-  const paid=Number(b.paid||0), amount=Number(b.amount||0);
+  const paid=normNum(b.paid||0), amount=normNum(b.amount||0);
   return {
     phone: b.phone||b.clientPhone||'',
     item: b.item||b.product||'',
@@ -564,7 +603,7 @@ app.post('/api/orders/status', async (req,res)=>{
 app.post('/api/orders/pay', async (req,res)=>{
   try{
     const { id, amount, method } = req.body||{};
-    const amt = Number(amount||0);
+    const amt = normNum(amount||0);
     if(!id || !(amt>0)) return res.status(400).json({ ok:false, error:'id & positive amount required' });
 
     const orders = await readAll('orders');
@@ -572,8 +611,8 @@ app.post('/api/orders/pay', async (req,res)=>{
     if(!base) return res.status(404).json({ ok:false, error:'order not found' });
 
     const payEvents = await readAll('orders_payments');
-    const alreadyPaid = payEvents.filter(p=>p.orderId===id).reduce((a,p)=>a+(+p.amount||0), (+base.paid||0));
-    const remaining = Math.max(0, (+base.amount||0) - alreadyPaid);
+    const alreadyPaid = payEvents.filter(p=>p.orderId===id).reduce((a,p)=>a+normNum(p.amount||0), normNum(base.paid||0));
+    const remaining = Math.max(0, normNum(base.amount||0) - alreadyPaid);
     if(amt > remaining) return res.status(400).json({ ok:false, error:'amount exceeds remaining' });
 
     const payRec = {
@@ -614,12 +653,12 @@ app.get('/api/orders/list', async (req,res)=>{
     for (const ev of statusEv) latestStatus.set(ev.id, ev.status);
 
     const paidMap = new Map();
-    for (const p of payments) paidMap.set(p.orderId, (paidMap.get(p.orderId)||0) + (+p.amount||0));
+    for (const p of payments) paidMap.set(p.orderId, (paidMap.get(p.orderId)||0) + normNum(p.amount||0));
 
     const rows = base.map(r=>{
       const paidExtra = paidMap.get(r.id)||0;
-      const paid = (+r.paid||0) + paidExtra;
-      const remaining = Math.max(0, (+r.amount||0) - paid);
+      const paid = normNum(r.paid||0) + paidExtra;
+      const remaining = Math.max(0, normNum(r.amount||0) - paid);
       return Object.assign({}, r, {
         status: latestStatus.get(r.id)||r.status||'Pending',
         paid,
@@ -641,7 +680,7 @@ app.post('/api/cash/add', async (req,res)=>{
       createdAt: now.toISOString(),
       session: b.session || 'morning',
       breakdown: b.breakdown || {},
-      total: Number(b.total||0),
+      total: normNum(b.total||0),
       note: b.note || ''
     };
     await appendRecord('cash', record);
@@ -686,17 +725,17 @@ app.get('/api/report/daily-pdf', async (req,res)=>{
       filterByQuery(await readAll('credit_payments'),{from,to}),
     ]);
 
-    const sCash = sumBy(sales, r=>/cash/i.test(r.method)?+r.amount:0);
-    const sTill = sumBy(sales, r=>/till/i.test(r.method)?+r.amount:0);
-    const sWith = sumBy(sales, r=>/withdraw/i.test(r.method)?+r.amount:0);
-    const sSend = sumBy(sales, r=>/send/i.test(r.method)?+r.amount:0);
-    const expTot = sumBy(expenses, r=>+r.amount);
-    const crGross = sumBy(credits, r=>+r.amount - (+r.paid||0));
-    const crPays  = sumBy(payments, r=>+r.paid);
+    const sCash = sumBy(sales, r=>/cash/i.test(r.method)?normNum(r.amount):0);
+    const sTill = sumBy(sales, r=>/till/i.test(r.method)?normNum(r.amount):0);
+    const sWith = sumBy(sales, r=>/withdraw/i.test(r.method)?normNum(r.amount):0);
+    const sSend = sumBy(sales, r=>/send/i.test(r.method)?normNum(r.amount):0);
+    const expTot = sumBy(expenses, r=>normNum(r.amount));
+    const crGross = sumBy(credits, r=>normNum(r.amount) - normNum(r.paid||0));
+    const crPays  = sumBy(payments, r=>normNum(r.paid));
     const crOutstanding = crGross - crPays;
-    const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>+r.total);
-    const evening = sumBy(cash.filter(x=>x.session==='evening'), r=>+r.total);
-    const eod     = sumBy(cash.filter(x=>x.session==='eod'),     r=>+r.total);
+    const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>normNum(r.total));
+    const evening = sumBy(cash.filter(x=>x.session==='evening'), r=>normNum(r.total));
+    const eod     = sumBy(cash.filter(x=>x.session==='eod'),     r=>normNum(r.total));
     const expected = morning + sCash - expTot;
     const diff = expected - evening;
 
@@ -709,7 +748,7 @@ app.get('/api/report/daily-pdf', async (req,res)=>{
 
     const lines = [
       ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend],
-      ['Expenses', expTot], ['Credit Outstanding', crOutstanding], ['Orders Total', sumBy(orders, r=>+r.amount)],
+      ['Expenses', expTot], ['Credit Outstanding', crOutstanding], ['Orders Total', sumBy(orders, r=>normNum(r.amount))],
       ['Cash Morning', morning], ['Cash Evening', evening], ['EOD Withdrawals', eod],
       ['Expected (evening)', expected], ['Difference', diff]
     ];
@@ -748,8 +787,8 @@ app.post('/api/invoices/create', async (req,res)=>{
     let sub=0;
     items.forEach((it,idx)=>{
       const name = (it.name||'').toString();
-      const price= +it.price||0;
-      const qty  = +it.qty||0;
+      const price= normNum(it.price);
+      const qty  = normNum(it.qty);
       const line = price*qty;
       sub += line;
       doc.text(`${idx+1}. ${name} — ${price.toFixed(2)} x ${qty} = ${line.toFixed(2)}`);
