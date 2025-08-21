@@ -726,7 +726,7 @@ app.get('/api/report/daily-pdf', async (req,res)=>{
     const crOutstanding = crGross - crPays;
     const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>normNum(r.total));
     const evening = sumBy(cash.filter(x=>x.session==='evening'), r=>normNum(r.total));
-    const eod     = sumBy(cash.filter(x=>x.session==='eod'),     r=>normNum(r.total));
+    const eod     = sumBy(cash.filter(x=>x.session==='withdraw_out' || x.session==='eod'),     r=>normNum(r.total));
     const expected = morning + sCash - expTot;
     const diff = expected - evening;
 
@@ -740,7 +740,7 @@ app.get('/api/report/daily-pdf', async (req,res)=>{
     const lines = [
       ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend],
       ['Expenses', expTot], ['Credit Outstanding', crOutstanding], ['Orders Total', sumBy(orders, r=>normNum(r.amount))],
-      ['Cash Morning', morning], ['Cash Evening', evening], ['EOD Withdrawals', eod],
+      ['Cash Morning', morning], ['Cash Evening', evening], ['Withdrawal Out', eod],
       ['Expected (evening)', expected], ['Difference', diff]
     ];
     lines.forEach(([t,v])=> doc.text(`${t}: ${(+v).toFixed(2)}`));
