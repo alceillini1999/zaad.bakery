@@ -50,6 +50,8 @@ const FILES = {
   cash:             path.join(DATA_DIR, 'cash.jsonl'),
 };
 
+const ALL_TYPES = ['sales','expenses','credits','cash','orders','orders_status','orders_payments','credit_payments'];
+
 // ---------- Helpers ----------
 function ensureDirs() {
   fs.mkdirSync(DATA_DIR,    { recursive: true });
@@ -74,17 +76,31 @@ function todayISO(d = new Date()) {
     return local.toISOString().slice(0,10);
   }
 }
+
+// دعم صيغ متعددة + أرقام جوجل/إكسل التسلسلية (مثل 45890)
 function parseToISO(input) {
-  if (!input) return todayISO();
+  if (input == null || input === '') return todayISO();
+  // رقم تسلسلي (أيام منذ 1899-12-30)
+  if (typeof input === 'number' || (/^\d+(\.\d+)?$/.test(String(input).trim()))) {
+    const serial = typeof input === 'number' ? input : parseFloat(String(input));
+    const base = Date.UTC(1899, 11, 30);
+    const ms = Math.round(serial * 86400000);
+    const d = new Date(base + ms);
+    return isNaN(d) ? todayISO() : d.toISOString().slice(0,10);
+  }
   if (typeof input === 'string') {
-    if (input.includes('/')) {
-      const [dd,mm,yyyy]=input.split('/');
-      return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    const s = input.trim();
+    if (s.includes('/')) {
+      // نفترض dd/mm/yyyy (إعدادات UK)
+      const [dd,mm,yyyy]=s.split('/');
+      if (yyyy && mm && dd) return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
     }
-    return input.slice(0,10);
+    // ISO أو أي نص يحتوي التاريخ أول 10 أحرف
+    return s.slice(0,10);
   }
   return todayISO(input);
 }
+
 function newId(){ return (Date.now().toString(36) + Math.random().toString(36).slice(2,6)).toUpperCase(); }
 
 // Normalize numbers: Arabic digits, thousands separators, Arabic decimal point
@@ -132,19 +148,21 @@ function toCSV(rows) {
 const sumBy=(arr,fn)=>arr.reduce((a,x)=>a+(+fn(x)||0),0);
 
 // ---------- Google Sheets Sync ----------
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '';
+// دعم متغيرات بديلة (GS_* كاختصار)
+const SPREADSHEET_ID = process.env.SPREADSHEET_ID || process.env.GS_SHEET_ID || '';
 const SHEET_PREFIX   = process.env.SHEET_PREFIX || ''; // optional, e.g. 'Zaad_'
+const GOOGLE_SA_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GS_CREDENTIALS_JSON || '';
 
 const _sheetsState = {
   client: null,
-  enabled: !!(google && SPREADSHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+  enabled: !!(google && SPREADSHEET_ID && GOOGLE_SA_JSON),
   knownTabs: new Set()
 };
 
 async function getSheetsClient() {
   if (!_sheetsState.enabled) return null;
   if (_sheetsState.client) return _sheetsState.client;
-  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  const credentials = JSON.parse(GOOGLE_SA_JSON);
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -266,15 +284,15 @@ const SHEETS_POLL_MS = Number(process.env.SHEETS_POLL_MS || 0); // مثال: 500
 const SHEETS_ALLOW_DELETE = String(process.env.SHEETS_ALLOW_DELETE || 'false').toLowerCase() === 'true';
 const SHEETS_POLL_DELETE = String(process.env.SHEETS_POLL_DELETE || 'false').toLowerCase() === 'true'; // ← جديد
 
-// (B) قراءة تبويب الشيت كأوبچكتات مبنية على صف العناوين — مع UNFORMATTED_VALUE
+// (B) قراءة تبويب الشيت كأوبچكتات مبنية على صف العناوين — بصيغة FORMATTED_VALUE لتفادي 45890
 async function readSheetObjects(sheetName) {
   const sheets = await getSheetsClient();
   if (!sheets) throw new Error('Sheets disabled');
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:Z`,
-    valueRenderOption: 'UNFORMATTED_VALUE',   // ← أرقام كأرقام بدون تنسيق
-    dateTimeRenderOption: 'FORMATTED_STRING', // ← التواريخ كـ string
+    valueRenderOption: 'FORMATTED_VALUE',   // ← نص منسّق (تواريخ كنص)
+    dateTimeRenderOption: 'FORMATTED_STRING',
   });
   const values = resp.data.values || [];
   if (!values.length) return { headers: [], rows: [] };
@@ -287,15 +305,15 @@ async function readSheetObjects(sheetName) {
   return { headers, rows };
 }
 
-// (C) تحويل صف من الشيت إلى سجل داخلي — تجاهُل الصفوف اللي مافيهاش ID
+// (C) تحويل صف من الشيت إلى سجل داخلي — الآن يقبل بدون ID ويولّد واحدًا + يدعم OrderId
 function sheetRowToRecord(type, o) {
-  const idRaw = String(o.ID ?? o.id ?? '').trim();
-  if (!idRaw) return null; // مهم: منع إنشاء IDs جديدة لصفوف بلا ID
+  const idRaw0 = (o.ID ?? o.id ?? o.OrderId ?? '').toString().trim();
+  const id = idRaw0 || newId();
   const get = (k, alt) => (o[k] ?? o[alt] ?? '');
   const num = v => normNum(v);
   const rec = {
-    id: idRaw,
-    dateISO: get('DateISO','dateISO') || todayISO(),
+    id,
+    dateISO: parseToISO(get('DateISO','dateISO') || todayISO()),
     createdAt: get('CreatedAt','createdAt') || new Date().toISOString(),
     updatedAt: get('UpdatedAt','updatedAt') || get('CreatedAt','createdAt') || new Date().toISOString(),
   };
@@ -303,6 +321,9 @@ function sheetRowToRecord(type, o) {
     case 'sales':    return Object.assign(rec, { product:get('Product','product'), quantity:num(get('Quantity','quantity')), unitPrice:num(get('UnitPrice','unitPrice')), amount:num(get('Amount','amount')), method:get('Method','method')||'Cash', note:get('Note','note'), source:get('Source','source') });
     case 'expenses': return Object.assign(rec, { item:get('Item','item'), amount:num(get('Amount','amount')), method:get('Method','method')||'Cash', note:get('Note','note'), receiptPath:get('ReceiptPath','receiptPath') });
     case 'credits':  return Object.assign(rec, { customer:get('Customer','customer'), item:get('Item','item'), amount:num(get('Amount','amount')), paid:num(get('Paid','paid')), remaining:num(get('Remaining','remaining')), note:get('Note','note'), paymentDateISO:get('PaymentDateISO','paymentDateISO') });
+    case 'orders':   return Object.assign(rec, { phone:get('Phone','phone'), item:get('Item','item'), amount:num(get('Amount','amount')), paid:num(get('Paid','paid')), remaining:num(get('Remaining','remaining')), status:get('Status','status')||'Pending', note:get('Note','note') });
+    case 'orders_status': return Object.assign(rec, { status:get('Status','status')||'Pending' });
+    case 'orders_payments': return Object.assign(rec, { orderId:get('OrderId','orderId'), amount:num(get('Amount','amount')), method:get('Method','method')||'Cash' });
     case 'cash':     return Object.assign(rec, { session:get('Session','session')||'morning', total:num(get('Total','total')), note:get('Note','note'), breakdown:(()=>{try{return JSON.parse(get('BreakdownJSON','breakdown')||'{}')}catch{return {}}})() });
     default:         return rec;
   }
@@ -322,7 +343,7 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
   const sheetsApi = await getSheetsClient(); if (!sheetsApi) throw new Error('Sheets disabled');
   await ensureTabAndHeader(sheetsApi, emptySpec.name, emptySpec.headers);
 
-  // اقرأ من الشيت، وحوّل لسجلات مع تجاهُل الصفوف بلا ID
+  // اقرأ من الشيت، وحوّل لسجلات (الآن نقبل بدون ID)
   const { rows: sheetRows } = await readSheetObjects(emptySpec.name);
   const sheetRecs = sheetRows.map(r => sheetRowToRecord(type, r)).filter(Boolean);
   const sheetMap = new Map(sheetRecs.map(r => [r.id, r]));
@@ -337,7 +358,7 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
   const changes = { type, pushed:0, pulled:0, updatedSheet:0, updatedLocal:0, deletedLocal:0, deletedSheet:0 };
 
   for (const id of ids) {
-    const sRec = sheetMap.get(id); // ← بقى record جاهز
+    const sRec = sheetMap.get(id);
     const lRec = localMap.get(id);
 
     if (sRec && lRec) {
@@ -368,7 +389,7 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
   // اكتب محلي (إلا في push-only)
   if (mode !== 'push') await rewriteLocalFile(type, finalLocal);
 
-  // اكتب الشيت (إلا في pull-only)
+  // اكتب الشيت (إلا في pull-only) — إعادة كتابة كاملة للهيدر + الصفوف
   if (mode !== 'pull') {
     const sHeaders = sheetSpec(type, {}).headers;
     const rows = finalLocal.map(rec => sheetSpec(type, rec).row);
@@ -395,10 +416,10 @@ async function syncMany(types, mode='both', opts={}) {
   return out;
 }
 
-// (F) Endpoints للمزامنة اليدوية
+// (F) Endpoints للمزامنة اليدوية — افتراضيًا كل الأنواع
 app.post('/api/sheets/sync', async (req,res)=>{
   try{
-    const { types=['sales','expenses','credits','cash'], mode='both', allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
+    const { types=ALL_TYPES, mode='both', allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
     const result = await syncMany(types, mode, { allowDelete });
     res.json({ ok:true, mode, result });
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
@@ -406,7 +427,7 @@ app.post('/api/sheets/sync', async (req,res)=>{
 
 app.post('/api/sheets/pull', async (req,res)=>{
   try{
-    const { types=['sales','expenses','credits','cash'], allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
+    const { types=ALL_TYPES, allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
     const result = await syncMany(types, 'pull', { allowDelete });
     res.json({ ok:true, result });
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
@@ -414,7 +435,7 @@ app.post('/api/sheets/pull', async (req,res)=>{
 
 app.post('/api/sheets/push', async (req,res)=>{
   try{
-    const { types=['sales','expenses','credits','cash'], allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
+    const { types=ALL_TYPES, allowDelete=SHEETS_ALLOW_DELETE } = req.body||{};
     const result = await syncMany(types, 'push', { allowDelete });
     res.json({ ok:true, result });
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
@@ -423,7 +444,7 @@ app.post('/api/sheets/push', async (req,res)=>{
 // (G) Polling اختياري حسب SHEETS_POLL_MS — يستخدم متغير SHEETS_POLL_DELETE للحذف التلقائي
 if (SHEETS_POLL_MS > 0) {
   setInterval(() => {
-    syncMany(['sales','expenses','credits','cash'], 'pull', { allowDelete: SHEETS_POLL_DELETE })
+    syncMany(ALL_TYPES, 'pull', { allowDelete: SHEETS_POLL_DELETE })
       .catch(e => console.warn('[Sheets] polling sync error:', e.message));
   }, SHEETS_POLL_MS);
 }
@@ -796,7 +817,7 @@ ensureDirs();
 server.listen(PORT, HOST, ()=> {
   console.log(`Server running on http://localhost:${PORT}`);
   if (!_sheetsState.enabled) {
-    console.log('[Sheets] Sync disabled. Set GOOGLE_SERVICE_ACCOUNT_JSON & SPREADSHEET_ID to enable.');
+    console.log('[Sheets] Sync disabled. Set GOOGLE_SERVICE_ACCOUNT_JSON (or GS_CREDENTIALS_JSON) & SPREADSHEET_ID (or GS_SHEET_ID) to enable.');
   } else {
     console.log('[Sheets] Sync is enabled.');
   }
