@@ -375,11 +375,15 @@ async function syncType(type, mode='both', { allowDelete=false } = {}) {
       if (mode !== 'push') { finalLocal.push(sRec); changes.pulled++; }
       else if (allowDelete) { changes.deletedSheet++; }
     } else if (!sRec && lRec) {
-      if (mode === 'pull') {
+      // CHANGED: honor allowDelete also in pull mode
+      if (allowDelete && mode !== 'push') {
+        // sheet حذفته → نحذفه محليًا (لا نضيفه لـ finalLocal)
+        changes.deletedLocal++;
+      } else if (mode === 'pull') {
+        // سلوك قديم لـ pull-only (بدون allowDelete): احتفظ بالمحلي
         finalLocal.push(lRec);
-      } else if (allowDelete) {
-        changes.deletedLocal++; // حذف محلي (لو مسموح)
       } else {
+        // سلوك both/push عندما لا نسمح بالحذف: ندفشه للشيت
         finalLocal.push(lRec);
         if (mode !== 'pull') changes.pushed++;
       }
