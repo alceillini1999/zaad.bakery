@@ -287,6 +287,13 @@
 
                     </div>
                     <div class="row g-2" id="denoms"></div>
+
+                    <!-- Manual amount for Till/Send Out -->
+                    <div id="manualOutWrap" class="d-none">
+                      <label class="form-label">Amount</label>
+                      <input type="number" step="0.01" min="0" class="form-control" id="manualOut" placeholder="0">
+                    </div>
+    
                     <div><label class="form-label">Note</label><input class="form-control" name="note" id="cashNote" placeholder="Optional note"></div>
                     <div class="d-flex justify-content-between align-items-center">
                       <strong>Total:</strong>
