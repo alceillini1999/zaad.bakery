@@ -392,3 +392,44 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
 });
 $('#btnRunReport')?.addEventListener('click', runReport);
+
+
+// Till No Out manual box handlers (Reports)
+(function(){
+  const input = $('#repTillOutInput'), btn = $('#btnSaveTillOut');
+  if (!input || !btn) return;
+  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
+  // Only enabled for single day
+  if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
+  // Load existing till_out
+  api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
+    const existing = kc.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+    if (existing>0) input.value = existing.toFixed(2);
+  });
+  btn.onclick = async ()=>{
+    const val = +($('#repTillOutInput').value||0);
+    if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+    await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: from, session:'till_out', total: val, note:'report till out' }) });
+    showToast('Till Out saved'); runReport();
+  };
+})();
+
+
+
+// Quick Outs (Manual) on Cash tab
+$('#btnCashOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#cashOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'cash_out', total: val, note:'cash tab manual' }) });
+  showToast('Cash Out saved'); $('#cashOutInput').value=''; 
+});
+$('#btnTillOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#tillOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'till_out', total: val, note:'cash tab manual' }) });
+  showToast('Till No Out saved'); $('#tillOutInput').value='';
+});
+$('#btnSendOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#sendOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'send_out', total: val, note:'cash tab manual' }) });
+  showToast('Send Money Out saved'); $('#sendOutInput').value='';
+});
+
