@@ -307,6 +307,7 @@ async function runReport(){
   const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
 
   // Section 4: Cash available (correct formula)
+  const totalSales = sCash + sTill + sSend + sWith;
   const cashAvailable = morning + sCash - expCash;
 
   // Next day morning (for single-day reports)
@@ -344,6 +345,8 @@ async function runReport(){
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (from available vs. next morning)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
     { title: '6) Remaining (carry to next day)', items: [['Cash remaining', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
+ ,
+    { title: '7) Total Sales (all methods)', items: [['Total Sales', totalSales]] }
   ];
 
   $('#repCards').innerHTML = sections.map(sec => `
