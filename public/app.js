@@ -284,6 +284,7 @@ async function runReport(){
   const sTill = s.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
   const sWith = s.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
   const sSend = s.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+  const totalSales = sCash + sTill + sSend + sWith;
 
   // Expenses breakdown
   const expTot  = e.rows.reduce((a,r)=>a+(+r.amount||0),0);
@@ -307,7 +308,6 @@ async function runReport(){
   const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
 
   // Section 4: Cash available (correct formula)
-  const totalSales = sCash + sTill + sSend + sWith;
   const cashAvailable = morning + sCash - expCash;
 
   // Next day morning (for single-day reports)
@@ -345,8 +345,6 @@ async function runReport(){
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (from available vs. next morning)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
     { title: '6) Remaining (carry to next day)', items: [['Cash remaining', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
- ,
-    { title: '7) Total Sales (all methods)', items: [['Total Sales', totalSales]] }
   ];
 
   $('#repCards').innerHTML = sections.map(sec => `
@@ -379,28 +377,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
 });
 $('#btnRunReport')?.addEventListener('click', runReport);
-
-
-// Till No Out manual box handlers (Reports)
-(function(){
-  const input = $('#repTillOutInput'), btn = $('#btnSaveTillOut');
-  if (!input || !btn) return;
-  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
-  // Only enabled for single day
-  if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
-  // Load existing till_out
-  api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
-    const existing = kc.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
-    if (existing>0) input.value = existing.toFixed(2);
-  });
-  btn.onclick = async ()=>{
-    const val = +($('#repTillOutInput').value||0);
-    if (!(val>=0)) return showToast('أدخل رقم صالح', false);
-    await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: from, session:'till_out', total: val, note:'report till out' }) });
-    showToast('Till Out saved'); runReport();
-  };
-})();
-
 
 
 // Quick Outs (Manual) on Cash tab
