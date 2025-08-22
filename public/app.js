@@ -224,24 +224,7 @@ function updateCashTotal(){
   let total=0; $$('input[id^="d_"]').forEach(i=>{
     const denom=parseInt(i.id.split('_')[1],10), qty=parseInt(i.value||'0',10);
     total += denom*qty;
-  }
-function updateCashTotalManual(){
-  const v = parseFloat($('#manualOut')?.value||'0')||0;
-  $('#cashTotal').textContent = v.toFixed(2);
-}
-function toggleCashMode(){
-  const s = document.querySelector('input[name="session"]:checked')?.value || 'morning';
-  const denoms = $('#denoms'), man = $('#manualOutWrap');
-  if(!denoms||!man) return;
-  if (s==='till_out' || s==='send_out'){
-    denoms.classList.add('d-none'); man.classList.remove('d-none');
-    updateCashTotalManual();
-  } else {
-    man.classList.add('d-none'); denoms.classList.remove('d-none');
-    updateCashTotal();
-  }
-}
-);
+  });
   $('#cashTotal').textContent=total.toFixed(2);
 }
 async function loadCash(){
@@ -324,7 +307,6 @@ async function runReport(){
   const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
 
   // Section 4: Cash available (correct formula)
-  const totalSales = sCash + sTill + sSend + sWith;
   const cashAvailable = morning + sCash - expCash;
 
   // Next day morning (for single-day reports)
@@ -435,10 +417,27 @@ $('#btnSendOutSave')?.addEventListener('click', async ()=>{
   showToast('Send Money Out saved'); $('#sendOutInput').value='';
 });
 
-
-
-// Cash session toggle + manual amount input
-$$('input[name="session"]').forEach(r=> r.addEventListener('change', toggleCashMode));
-$('#manualOut')?.addEventListener('input', updateCashTotalManual);
-document.addEventListener('DOMContentLoaded', toggleCashMode);
+// --- Manual Amount mode for Till/Send on Cash tab ---
+function updateCashTotalManual(){
+  const v = parseFloat($('#manualOut')?.value || '0') || 0;
+  $('#cashTotal').textContent = v.toFixed(2);
+}
+function toggleCashMode(){
+  const s = document.querySelector('input[name="session"]:checked')?.value || 'morning';
+  const denoms = $('#denoms'), man = $('#manualOutWrap');
+  if (!denoms || !man) return;
+  if (s==='till_out' || s==='send_out'){
+    denoms.classList.add('d-none'); man.classList.remove('d-none');
+    updateCashTotalManual();
+  } else {
+    man.classList.add('d-none'); denoms.classList.remove('d-none');
+    updateCashTotal();
+  }
+}
+// listeners
+document.addEventListener('DOMContentLoaded', ()=>{
+  $$('input[name="session"]').forEach(r=> r.addEventListener('change', toggleCashMode));
+  $('#manualOut')?.addEventListener('input', updateCashTotalManual);
+  toggleCashMode();
+});
 
