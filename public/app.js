@@ -420,3 +420,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
   toggleCashMode();
 });
 
+
+// --- Safe Chart rendering (won't break reports if Chart.js missing) ---
+function safeChart(ctx, data) {
+  try {
+    if (!ctx || !window.Chart) return;
+    if (window._salesChart) try { window._salesChart.destroy(); } catch(e){}
+    window._salesChart = new Chart(ctx, {
+      type: 'bar',
+      data: data,
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  } catch(e) { console.warn('Chart disabled:', e); }
+}
+
+
+// Wire up Run button + default dates
+document.addEventListener('DOMContentLoaded', ()=>{
+  const from = $('#repFrom'), to=$('#repTo'), btn=$('#btnRunReport');
+  if (from && !from.value) from.value = today();
+  if (to && !to.value) to.value = from ? from.value : today();
+  btn && (btn.onclick = ()=> runReport());
+});
+
