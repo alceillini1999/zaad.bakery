@@ -205,8 +205,10 @@ $('#formOrderPay')?.addEventListener('submit', async e=>{
 });
 
 /* ---------- CASH COUNT ---------- */
+const MANUAL_MODES=new Set(['cash_out','withdrawal_out','till_no_out','send_money_out']);
 const DEFAULT_DENOMS=[1000,500,200,100,50,40,20,10,5,1];
 function loadDenoms(){
+  toggleCashModeUI();
   const wrap = $('#denoms'); wrap.innerHTML='';
   DEFAULT_DENOMS.forEach(v=>{
     const id='d_'+v;
@@ -252,6 +254,9 @@ $('#formCash')?.addEventListener('submit', async e=>{
   if(res.ok){ showToast('Cash saved'); loadCash(); } else showToast(res.error||'Failed',false);
 });
 
+// Attach listeners for mode changes
+$$('input[name="session"]').forEach(r=>r.addEventListener('change', toggleCashModeUI));
+document.getElementById('manualOutAmount')?.addEventListener('input', updateCashTotal);
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
 function drawSalesByMethod({cash, till, withdrawal, send}) {
@@ -264,12 +269,8 @@ function drawSalesByMethod({cash, till, withdrawal, send}) {
     options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
   });
 }
-
 async function runReport(){
-  const q=new URLSearchParams();
-  if($('#repFrom').value) q.set('from',$('#repFrom').value);
-  if($('#repTo').value)   q.set('to',$('#repTo').value);
-
+  const q=new URLSearchParams(); if($('#repFrom').value) q.set('from',$('#repFrom').value); if($('#repTo').value) q.set('to',$('#repTo').value);
   const [s,e,c,o,k,p] = await Promise.all([
     api('/api/sales/list?'+q.toString()),
     api('/api/expenses/list?'+q.toString()),
@@ -278,93 +279,50 @@ async function runReport(){
     api('/api/cash/list?'+q.toString()),
     api('/api/credits/payments/list?'+q.toString()),
   ]);
-
-  // Sales by method
   const sCash = s.rows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
   const sTill = s.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
   const sWith = s.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
   const sSend = s.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
-  const totalSales = sCash + sTill + sSend + sWith;
-
-  // Expenses breakdown
-  const expTot  = e.rows.reduce((a,r)=>a+(+r.amount||0),0);
-  const expCash = e.rows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
-  const expTill = e.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
-  const expWith = e.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
-  const expSend = e.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
-
-  // Credit outstanding
+  const expTot = e.rows.reduce((a,r)=>a+(+r.amount||0),0);
   const crGross = c.rows.reduce((a,r)=>a+((+r.amount||0)-(+r.paid||0)),0);
   const crPays  = p.rows.reduce((a,r)=>a+(+r.paid||0),0);
   const crOutstanding = crGross - crPays;
-
-  // Cash counts
   const morning = k.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
   const evening = k.rows.filter(x=>x.session==='evening').reduce((a,r)=>a+(+r.total||0),0);
+  const eod     = k.rows.filter(x=>x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
+  const expected = morning + sCash - expTot;
+  const diff = expected - evening;
 
-  // Outs
-  const withdrawOut = k.rows.filter(x=>x.session==='withdraw_out' || x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
-  const tillOut     = k.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
-  const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
-
-  // Section 4: Cash available (correct formula)
-  const cashAvailable = morning + sCash - expCash;
-
-  // Next day morning (for single-day reports)
-  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
-  let nextMorning = 0;
-  if (from===to){
-    const d = new Date(from+'T00:00:00');
-    d.setDate(d.getDate()+1);
-    const next = d.toISOString().slice(0,10);
-    const kn = await api('/api/cash/list?from='+next+'&to='+next);
-    nextMorning = kn.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
-  }
-
-  // Manual cash_out for selected day (session='cash_out')
-  let manualCashOut = 0;
-  if (from===to){
-    const kc = await api('/api/cash/list?from='+from+'&to='+from);
-    manualCashOut = kc.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
-  }
-
-  const computedCashOut = Math.max(0, cashAvailable - nextMorning);
-  const cashOut = manualCashOut || computedCashOut;
-
-  // Remaining by channel (carry to next day)
-  const cashRemaining = cashAvailable - (manualCashOut||0);
-  const tillRemaining = sTill - tillOut - expTill;
-  const withRemaining = sWith - withdrawOut - expWith;
-  const sendRemaining = sSend - sendOut - expSend;
-
-  // Build 6 sections
-  const sections = [
-    { title: '1) Expenses', items: [['Expenses', expTot]] },
-    { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
-    { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
-    { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
-    { title: '5) Outs', items: [['Cash Out (from available vs. next morning)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
-    { title: '6) Remaining (carry to next day)', items: [['Cash remaining', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
+  
+  const totalSales = sCash + sTill + sWith + sSend;
+  const cashMorning = k.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+  const cashEvening = k.rows.filter(x=>x.session==='evening').reduce((a,r)=>a+(+r.total||0),0);
+  const cashOut = k.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
+  const tillOut = k.rows.filter(x=>x.session==='till_no_out').reduce((a,r)=>a+(+r.total||0),0);
+  const wOut = k.rows.filter(x=>x.session==='withdrawal_out').reduce((a,r)=>a+(+r.total||0),0);
+  const sendOut = k.rows.filter(x=>x.session==='send_money_out').reduce((a,r)=>a+(+r.total||0),0);
+  const expected = cashMorning + sCash - expTot;
+  const diff = expected - cashEvening;
+  const cards = [
+    ['Expenses', expTot],
+    ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith],
+    ['Cash Morning', cashMorning], ['Cash Evening', cashEvening],
+    ['Cash Out', cashOut], ['Till No Out', tillOut], ['Send Money Out', sendOut], ['Withdrawal Out', wOut],
+    ['Credit Outstanding', crOutstanding], ['Orders Total', (o.rows||[]).reduce((a,r)=>a+(+r.amount||0),0)],
+    ['Total Sales', totalSales],
+    ['Expected (Evening)', expected], ['Difference', diff]
   ];
 
-  $('#repCards').innerHTML = sections.map(sec => `
-    <div class="col-12"><h5 class="mt-3 mb-2">${sec.title}</h5></div>
-    ${sec.items.map(([t,v])=>`
-      <div class="col-6 col-md-4 col-xl-3">
-        <div class="card mini-stat"><div class="card-body">
-          <div class="text-muted">${t}</div>
-          <div class="fs-4 fw-semibold mt-1">${(+v).toFixed(2)}</div>
-        </div></div>
-      </div>
-    `).join('')}
+  $('#repCards').innerHTML = cards.map(([t,v])=>`
+    <div class="col-6 col-md-4 col-xl-3">
+      <div class="card mini-stat"><div class="card-body"><div class="text-secondary small">${t}</div><div class="fs-4 fw-semibold mt-1">${(+v).toFixed(2)}</div></div></div>
+    </div>
   `).join('');
-
   drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
+
+  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
   $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
-
-  // Prefill & Save manual Cash Out UI
-  }
-
+}
 $('#btnRunReport')?.addEventListener('click', runReport);
 
 /* ---------- Boot ---------- */
@@ -376,70 +334,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // load lists initially
   loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
 });
-$('#btnRunReport')?.addEventListener('click', runReport);
-
-
-// Quick Outs (Manual) on Cash tab
-$('#btnCashOutSave')?.addEventListener('click', async ()=>{
-  const val = +($('#cashOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
-  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'cash_out', total: val, note:'cash tab manual' }) });
-  showToast('Cash Out saved'); $('#cashOutInput').value=''; 
-});
-$('#btnTillOutSave')?.addEventListener('click', async ()=>{
-  const val = +($('#tillOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
-  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'till_out', total: val, note:'cash tab manual' }) });
-  showToast('Till No Out saved'); $('#tillOutInput').value='';
-});
-$('#btnSendOutSave')?.addEventListener('click', async ()=>{
-  const val = +($('#sendOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
-  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'send_out', total: val, note:'cash tab manual' }) });
-  showToast('Send Money Out saved'); $('#sendOutInput').value='';
-});
-
-// --- Manual Amount mode for Till/Send on Cash tab ---
-function updateCashTotalManual(){
-  const v = parseFloat($('#manualOut')?.value || '0') || 0;
-  $('#cashTotal').textContent = v.toFixed(2);
-}
-function toggleCashMode(){
-  const s = document.querySelector('input[name="session"]:checked')?.value || 'morning';
-  const denoms = $('#denoms'), man = $('#manualOutWrap');
-  if (!denoms || !man) return;
-  if (s==='till_out' || s==='send_out'){
-    denoms.classList.add('d-none'); man.classList.remove('d-none');
-    updateCashTotalManual();
-  } else {
-    man.classList.add('d-none'); denoms.classList.remove('d-none');
-    updateCashTotal();
-  }
-}
-// listeners
-document.addEventListener('DOMContentLoaded', ()=>{
-  $$('input[name="session"]').forEach(r=> r.addEventListener('change', toggleCashMode));
-  $('#manualOut')?.addEventListener('input', updateCashTotalManual);
-  toggleCashMode();
-});
-
-
-// --- Safe Chart rendering (won't break reports if Chart.js missing) ---
-function safeChart(ctx, data) {
-  try {
-    if (!ctx || !window.Chart) return;
-    if (window._salesChart) try { window._salesChart.destroy(); } catch(e){}
-    window._salesChart = new Chart(ctx, {
-      type: 'bar',
-      data: data,
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-  } catch(e) { console.warn('Chart disabled:', e); }
-}
-
-
-// Wire up Run button + default dates
-document.addEventListener('DOMContentLoaded', ()=>{
-  const from = $('#repFrom'), to=$('#repTo'), btn=$('#btnRunReport');
-  if (from && !from.value) from.value = today();
-  if (to && !to.value) to.value = from ? from.value : today();
-  btn && (btn.onclick = ()=> runReport());
-});
-

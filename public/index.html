@@ -278,10 +278,17 @@
                 <div class="card-header bg-white fw-semibold"><i class="bi bi-cash"></i> Cash Count</div>
                 <div class="card-body">
                   <form id="formCash" class="vstack gap-3">
-                    <div class="d-flex gap-3">
-                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="morning" checked> <label class="form-check-label">Morning</label></div>
-                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="evening"> <label class="form-check-label">Evening</label></div>
-                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="withdraw_out"> <label class="form-check-label">Withdrawal Out</label></div>
+                    <div class="d-flex flex-wrap gap-3">
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="morning" id="s_morning" checked> <label class="form-check-label" for="s_morning">Morning</label></div>
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="evening" id="s_evening"> <label class="form-check-label" for="s_evening">Evening</label></div>
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="cash_out" id="s_cash_out"> <label class="form-check-label" for="s_cash_out">Cash Out</label></div>
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="withdrawal_out" id="s_withdrawal_out"> <label class="form-check-label" for="s_withdrawal_out">Withdrawal Out</label></div>
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="till_no_out" id="s_till_no_out"> <label class="form-check-label" for="s_till_no_out">Till No Out</label></div>
+                      <div class="form-check"><input class="form-check-input" type="radio" name="session" value="send_money_out" id="s_send_money_out"> <label class="form-check-label" for="s_send_money_out">Send Money Out</label></div>
+                    </div>
+                    <div id="manualOutWrap" class="mt-2" style="display:none">
+                      <label class="form-label">Amount</label>
+                      <input type="number" id="manualOutAmount" class="form-control" min="0" step="0.01" value="0">
                     </div>
                     <div class="row g-2" id="denoms"></div>
                     <div><label class="form-label">Note</label><input class="form-control" name="note" id="cashNote" placeholder="Optional note"></div>
