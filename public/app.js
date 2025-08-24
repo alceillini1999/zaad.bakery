@@ -254,7 +254,7 @@ $('#formCash')?.addEventListener('submit', async e=>{
 
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
-function drawSalesByMethod({cash, till, withdrawal, send}) {
+function // chart removed (call neutralized){
   const ctx = document.getElementById('salesByMethodChart'); if(!ctx) return;
   const data=[cash,till,withdrawal,send].map(x=>+x||0);
   if(salesByMethodChart) salesByMethodChart.destroy();
@@ -358,7 +358,7 @@ async function runReport(){
     `).join('')}
   `).join('');
 
-  drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
+  // chart removed (call neutralized)
   $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
 
   // Prefill & Save manual Cash Out UI
