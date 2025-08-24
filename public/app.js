@@ -307,7 +307,7 @@ async function runReport(){
   const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
 
   // Section 4: Cash available (correct formula)
-  const cashAvailable = morning + sCash - expCash;
+  const cashAvailable = morning + sCash + withdrawOut - expCash; // per request: cash morning + cash sales + withdrawal-out - cash expenses
 
   // Next day morning (for single-day reports)
   const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
