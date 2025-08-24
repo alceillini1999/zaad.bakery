@@ -254,7 +254,7 @@ $('#formCash')?.addEventListener('submit', async e=>{
 
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
-function // drawSalesByMethod removed per request{
+function drawSalesByMethod({cash, till, withdrawal, send}) {
   const ctx = document.getElementById('salesByMethodChart'); if(!ctx) return;
   const data=[cash,till,withdrawal,send].map(x=>+x||0);
   if(salesByMethodChart) salesByMethodChart.destroy();
@@ -284,8 +284,6 @@ async function runReport(){
   const sTill = s.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
   const sWith = s.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
   const sSend = s.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
-  const sTotal = sCash + sTill + sWith + sSend; // Total Sales
-
 
   // Expenses breakdown
   const expTot  = e.rows.reduce((a,r)=>a+(+r.amount||0),0);
@@ -346,8 +344,7 @@ async function runReport(){
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
     { title: '6) Remaining (carry to next day)', items: [['Cash remaining', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
-  
-    , { title: '7) Total Sales', items: [['Total Sales', sTotal], ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend]] }];
+  ];
 
   $('#repCards').innerHTML = sections.map(sec => `
     <div class="col-12"><h5 class="mt-3 mb-2">${sec.title}</h5></div>
@@ -361,7 +358,7 @@ async function runReport(){
     `).join('')}
   `).join('');
 
-  // drawSalesByMethod removed per request
+  drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
   $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
 
   // Prefill & Save manual Cash Out UI
