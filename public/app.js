@@ -307,7 +307,7 @@ async function runReport(){
   const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
 
   // Section 4: Cash available (correct formula)
-  const cashAvailable = morning + sCash + withdrawOut - expCash; // cash morning + cash sales + withdrawal-out - expenses (cash only)
+  const cashAvailable = morning + sCash - expCash;
 
   // Next day morning (for single-day reports)
   const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
@@ -404,17 +404,17 @@ $('#btnRunReport')?.addEventListener('click', runReport);
 $('#btnCashOutSave')?.addEventListener('click', async ()=>{
   const val = +($('#cashOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
   await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'cash_out', total: val, note:'cash tab manual' }) });
-  showToast('Cash Out saved'); $('#cashOutInput').value=''; 
+  showToast('Cash Out saved'); $('#cashOutInput').value=''; runReport?.(); loadCash?.(); 
 });
 $('#btnTillOutSave')?.addEventListener('click', async ()=>{
   const val = +($('#tillOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
   await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'till_out', total: val, note:'cash tab manual' }) });
-  showToast('Till No Out saved'); $('#tillOutInput').value='';
+  showToast('Till No Out saved'); $('#tillOutInput').value=''; runReport?.(); loadCash?.();
 });
 $('#btnSendOutSave')?.addEventListener('click', async ()=>{
   const val = +($('#sendOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
   await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'send_out', total: val, note:'cash tab manual' }) });
-  showToast('Send Money Out saved'); $('#sendOutInput').value='';
+  showToast('Send Money Out saved'); $('#sendOutInput').value=''; runReport?.(); loadCash?.();
 });
 
 // --- Manual Amount mode for Till/Send on Cash tab ---
