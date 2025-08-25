@@ -254,7 +254,7 @@ $('#formCash')?.addEventListener('submit', async e=>{
 
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
-function // chart removed (call neutralized){
+function drawSalesByMethod({cash, till, withdrawal, send}) {
   const ctx = document.getElementById('salesByMethodChart'); if(!ctx) return;
   const data=[cash,till,withdrawal,send].map(x=>+x||0);
   if(salesByMethodChart) salesByMethodChart.destroy();
@@ -284,8 +284,6 @@ async function runReport(){
   const sTill = s.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
   const sWith = s.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
   const sSend = s.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
-  const sTotal = sCash + sTill + sWith + sSend; // Total Sales
-
 
   // Expenses breakdown
   const expTot  = e.rows.reduce((a,r)=>a+(+r.amount||0),0);
@@ -309,7 +307,7 @@ async function runReport(){
   const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
 
   // Section 4: Cash available (correct formula)
-  const cashAvailable = morning + sCash + withdrawOut - expCash; // per request // per request: cash morning + cash sales + withdrawal-out - cash expenses
+  const cashAvailable = morning + sCash + withdrawOut - expCash; // per request: cash morning + cash sales + withdrawal-out - cash expenses
 
   // Next day morning (for single-day reports)
   const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
@@ -329,11 +327,11 @@ async function runReport(){
     manualCashOut = kc.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
-  const computedCashOut = Math.max(0, cashAvailable - evening); // per request: available - evening
-  const cashOut = computedCashOut;
+  const computedCashOut = Math.max(0, cashAvailable - nextMorning);
+  const cashOut = manualCashOut || computedCashOut;
 
   // Remaining by channel (carry to next day)
-  const cashRemaining = evening; // per request: equals cash evening
+  const cashRemaining = cashAvailable - (manualCashOut||0);
   const tillRemaining = sTill - tillOut - expTill;
   const withRemaining = sWith - withdrawOut - expWith;
   const sendRemaining = sSend - sendOut - expSend;
@@ -344,10 +342,9 @@ async function runReport(){
     { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
     { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
-    { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
+    { title: '5) Outs', items: [['Cash Out (from available vs. next morning)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
     { title: '6) Remaining (carry to next day)', items: [['Cash remaining', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
-  
-    , { title: '7) Total Sales', items: [['Total Sales', sTotal], ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Withdrawal)', sWith], ['Sales (Send Money)', sSend]] }];
+  ];
 
   $('#repCards').innerHTML = sections.map(sec => `
     <div class="col-12"><h5 class="mt-3 mb-2">${sec.title}</h5></div>
@@ -361,7 +358,7 @@ async function runReport(){
     `).join('')}
   `).join('');
 
-  // chart removed (call neutralized)
+  drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
   $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
 
   // Prefill & Save manual Cash Out UI
