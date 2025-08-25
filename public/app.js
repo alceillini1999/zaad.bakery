@@ -327,11 +327,11 @@ async function runReport(){
     manualCashOut = kc.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
-  const computedCashOut = Math.max(0, cashAvailable - nextMorning);
+  const computedCashOut = Math.max(0, cashAvailable - evening); // per user: cash out = available - evening
   const cashOut = manualCashOut || computedCashOut;
 
   // Remaining by channel (carry to next day)
-  const cashRemaining = cashAvailable - (manualCashOut||0);
+  const cashRemaining = evening; // per user: remaining = evening cash
   const tillRemaining = sTill - tillOut - expTill;
   const withRemaining = sWith - withdrawOut - expWith;
   const sendRemaining = sSend - sendOut - expSend;
@@ -342,8 +342,8 @@ async function runReport(){
     { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
     { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
-    { title: '5) Outs', items: [['Cash Out (from available vs. next morning)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
-    { title: '6) Remaining (carry to next day)', items: [['Cash remaining', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
+    { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
+    { title: '6) Remaining (carry to next day)', items: [['Cash remaining (evening)', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
   ];
 
   $('#repCards').innerHTML = sections.map(sec => `
