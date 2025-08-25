@@ -328,11 +328,11 @@ const totalSales = sCash + sTill + sWith + sSend;
     manualCashOut = kc.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
-  const computedCashOut = Math.max(0, cashAvailable - evening); // per user: cash out = available - evening
+  const computedCashOut = Math.max(0, cashAvailable - evening); // align with PDF & user: available - evening
   const cashOut = manualCashOut || computedCashOut;
 
   // Remaining by channel (carry to next day)
-  const cashRemaining = evening; // per user: remaining = evening cash
+  const cashRemaining = evening; // align with user request
   const tillRemaining = sTill - tillOut - expTill;
   const withRemaining = sWith - withdrawOut - expWith;
   const sendRemaining = sSend - sendOut - expSend;
