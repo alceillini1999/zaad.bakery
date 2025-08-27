@@ -113,6 +113,25 @@ async function loadCredit(){
     b.addEventListener('click', ()=>{
       const name=decodeURIComponent(b.dataset.name||'');
       const f=$('#formPay'); f.customer.value=name;
+      // Ensure payment method field exists in the Credit Pay modal
+      let _m = f.querySelector('[name="method"]');
+      if(!_m){
+        const block = document.createElement('div');
+        block.innerHTML = `<div>
+          <label class="form-label">Payment Method</label>
+          <select class="form-select" name="method" required>
+            <option>Cash</option>
+            <option>Till No</option>
+            <option>Withdrawal</option>
+            <option>Send Money</option>
+          </select>
+        </div>`;
+        const submitBtn = f.querySelector('button[type="submit"]');
+        (submitBtn?.parentElement || f).insertBefore(block.firstElementChild, submitBtn || null);
+        _m = f.querySelector('[name="method"]');
+      }
+      _m.value = 'Cash';
+
       new bootstrap.Modal($('#payModal')).show();
     });
   });
@@ -127,7 +146,8 @@ $('#formPay')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
   const res=await api('/api/credits/pay',{method:'POST',body:JSON.stringify(body)});
-  if(res.ok){ e.target.reset(); bootstrap.Modal.getInstance($('#payModal'))?.hide(); showToast('Payment recorded'); loadCredit(); loadSales(); } else showToast(res.error||'Failed',false);
+  if(res.ok){ e.target.reset(); bootstrap.Modal.getInstance($('#payModal'))?.hide(); showToast('Payment recorded'); loadCredit(); loadSales();
+    document.querySelector('[data-bs-target="#tabSales"]')?.click(); } else showToast(res.error||'Failed',false);
 });
 
 /* ---------- ORDERS + STATUS + PAY + INVOICE ---------- */
@@ -201,7 +221,8 @@ $('#formOrderPay')?.addEventListener('submit', async e=>{
   if(amount>remain){ return showToast('Amount exceeds remaining', false); }
   const method=$('#opMethod').value;
   const res=await api('/api/orders/pay',{method:'POST', body:JSON.stringify({id, amount, method})});
-  if(res.ok){ bootstrap.Modal.getInstance($('#orderPayModal'))?.hide(); showToast('Order payment saved'); loadOrders(); loadSales(); } else showToast(res.error||'Failed',false);
+  if(res.ok){ bootstrap.Modal.getInstance($('#orderPayModal'))?.hide(); showToast('Order payment saved'); loadOrders(); loadSales();
+  document.querySelector('[data-bs-target="#tabSales"]')?.click(); } else showToast(res.error||'Failed',false);
 });
 
 /* ---------- CASH COUNT ---------- */
