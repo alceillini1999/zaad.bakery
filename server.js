@@ -561,9 +561,8 @@ app.post('/api/credits/pay', async (req,res)=>{
     const amt = (typeof b.paid !== 'undefined') ? normNum(b.paid) : normNum(b.amount||0);
     const method = (b.method || b.payment || 'Cash').toString();
     const note = (b.note || '').toString();
-    if (!customer || !(amt>0)):
-        return res.status(400).json({ ok:false, error:'customer & positive amount required' });
-    const now = new Date().toISOString();
+    if (!customer || !(amt>0)) {return res.status(400).json({ ok:false, error:'customer & positive amount required' });
+    }const now = new Date().toISOString();
     const payRec = { id:newId(), customer, paid: amt, method, note, dateISO: todayISO(), createdAt: now, updatedAt: now };
     await appendRecord('credit_payments', payRec);
     io.emit('new-record', { type:'credit_payments', record: payRec });
