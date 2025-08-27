@@ -348,7 +348,7 @@ id="tabReports">
   <script src="/app.js"></script>
 
 
-<!-- Credit Pay Modal -->
+<!-- Credit Pay Modal (minimal, with method) -->
   <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -366,6 +366,15 @@ id="tabReports">
             <input class="form-control" name="paid" type="number" min="0" step="0.01" placeholder="0.00" required>
           </div>
           <div>
+            <label class="form-label">Payment Method</label>
+            <select class="form-select" name="method" required>
+              <option>Cash</option>
+              <option>Till No</option>
+              <option>Withdrawal</option>
+              <option>Send Money</option>
+            </select>
+          </div>
+          <div>
             <label class="form-label">Note</label>
             <textarea class="form-control" name="note" rows="2" placeholder="Optional"></textarea>
           </div>
@@ -379,7 +388,7 @@ id="tabReports">
   </div>
 
 
-<!-- Order Pay Modal -->
+<!-- Order Pay Modal (minimal, aligns with app.js field IDs) -->
   <div class="modal fade" id="orderPayModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
