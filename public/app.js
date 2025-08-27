@@ -201,7 +201,18 @@ $('#formOrderPay')?.addEventListener('submit', async e=>{
   if(amount>remain){ return showToast('Amount exceeds remaining', false); }
   const method=$('#opMethod').value;
   const res=await api('/api/orders/pay',{method:'POST', body:JSON.stringify({id, amount, method})});
-  if(res.ok){ bootstrap.Modal.getInstance($('#orderPayModal'))?.hide(); showToast('Order payment saved'); loadOrders(); loadSales(); } else showToast(res.error||'Failed',false);
+  if(res.ok){
+    const modal = bootstrap.Modal.getInstance($('#orderPayModal')); if(modal) modal.hide();
+    showToast('Payment saved');
+    // Switch to Sales tab so user sees it immediately
+    const btnSales = document.querySelector('[data-bs-target="#tabSales"]');
+    if(btnSales){ bootstrap.Tab.getOrCreateInstance(btnSales).show(); }
+    loadOrders();
+    loadSales();
+  } else {
+    showToast(res.error||'Failed', false);
+  }
+});if(res.ok){ bootstrap.Modal.getInstance($('#orderPayModal'))?.hide(); showToast('Order payment saved'); loadOrders(); loadSales(); } else showToast(res.error||'Failed',false);
 });
 
 /* ---------- CASH COUNT ---------- */
