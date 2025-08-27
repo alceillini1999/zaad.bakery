@@ -554,7 +554,28 @@ const addCreditPayment = handleAdd('credit_payments', b=>({
   paid: normNum(b.paid||b.amount||0),
   note: b.note||'',
 }));
-app.post('/api/credits/pay', addCreditPayment);
+app.post('/api/credits/pay', async (req,res)=>{
+  try{
+    const b = req.body || {};
+    const customer = (b.customer || b.name || '').toString().trim();
+    const amt = (typeof b.paid !== 'undefined') ? normNum(b.paid) : normNum(b.amount||0);
+    const method = (b.method || b.payment || 'Cash').toString();
+    const note = (b.note || '').toString();
+    if (!customer || !(amt>0)):
+        return res.status(400).json({ ok:false, error:'customer & positive amount required' });
+    const now = new Date().toISOString();
+    const payRec = { id:newId(), customer, paid: amt, method, note, dateISO: todayISO(), createdAt: now, updatedAt: now };
+    await appendRecord('credit_payments', payRec);
+    io.emit('new-record', { type:'credit_payments', record: payRec });
+
+    // mirror to Sales so reports include it by method
+    const saleRec = { id:newId(), dateISO: todayISO(), createdAt: now, updatedAt: now, amount: amt, method, note: `from credit ${customer}`, source: `credit:${customer}` };
+    await appendRecord('sales', saleRec);
+    io.emit('new-record', { type:'sales', record: saleRec });
+
+    res.json({ ok:true, payment: payRec, sale: saleRec });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
 app.get('/api/credits/payments/list', async (req,res)=>{
   try{
     const rows = filterByQuery(await readAll('credit_payments'), req.query||{});
