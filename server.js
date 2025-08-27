@@ -554,7 +554,6 @@ const addCreditPayment = handleAdd('credit_payments', b=>({
   paid: normNum(b.paid||b.amount||0),
   note: b.note||'',
 }));
-// Custom credit payment route -> also logs a Sale with method
 app.post('/api/credits/pay', async (req,res)=>{
   try{
     const b = req.body || {};
@@ -563,8 +562,6 @@ app.post('/api/credits/pay', async (req,res)=>{
     if(!customer || !(amt>0)) return res.status(400).json({ ok:false, error:'customer & positive paid required' });
 
     const now = new Date().toISOString();
-
-    // 1) Save credit payment event
     const payRec = {
       id: newId(),
       customer,
@@ -577,8 +574,7 @@ app.post('/api/credits/pay', async (req,res)=>{
     await appendRecord('credit_payments', payRec);
     io.emit('new-record', { type:'credit_payments', record: payRec });
 
-    // 2) Mirror into Sales with the chosen method (default Cash)
-    const method = b.method || b.payment || 'Cash';
+    const method = b.method || 'Cash';
     const saleRec = {
       id: newId(),
       dateISO: todayISO(),
