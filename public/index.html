@@ -162,7 +162,18 @@
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap"><span>Expenses</span><input type="date" class="form-control form-control-sm ms-auto" id="expFrom"><input type="date" class="form-control form-control-sm" id="expTo"><select id="expMethod" class="form-select form-select-sm" style="max-width:160px"><option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option></select><button id="btnExpFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button></div>
+                <!-- Add filters: from/to and method -->
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                  <span>Expenses</span>
+                  <input type="date" class="form-control form-control-sm ms-auto" id="expFrom">
+                  <input type="date" class="form-control form-control-sm" id="expTo">
+                  <select id="expMethod" class="form-select form-select-sm" style="max-width:160px">
+                    <option value="">All</option>
+                    <option>Cash</option>
+                    <option>Withdrawal</option>
+                  </select>
+                  <button id="btnExpFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblExp">
                     <thead class="table-light"><tr><th>Date</th><th>Item</th><th class="text-end">Amount</th><th>Method</th><th>Receipt</th><th>Note</th></tr></thead>
@@ -207,9 +218,15 @@
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+                <!-- Add filters for credit: from/to and customer -->
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap">
                   <span>Credit</span>
-                  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin"></i> Record Payment</button>
+                  <input type="date" class="form-control form-control-sm ms-auto" id="crFrom">
+                  <input type="date" class="form-control form-control-sm" id="crTo">
+                  <input type="text" class="form-control form-control-sm" id="crCustomer" placeholder="Customer…" style="max-width:180px">
+                  <button id="btnCrFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                  <!-- Keep record payment button aligned to end -->
+                  <button class="btn btn-outline-primary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin"></i> Record Payment</button>
                 </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblCr">
@@ -248,12 +265,15 @@
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
+                <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center flex-wrap">
                   <span>Orders</span>
-                  <select id="orStatusFilter" class="form-select form-select-sm ms-auto" style="max-width:200px">
+                  <input type="date" class="form-control form-control-sm ms-auto" id="orFrom">
+                  <input type="date" class="form-control form-control-sm" id="orTo">
+                  <select id="orStatusFilter" class="form-select form-select-sm" style="max-width:200px">
                     <option value="">All Status</option>
                     <option>Pending</option><option>In-Progress</option><option>Done</option><option>Delivered</option>
                   </select>
+                  <button id="btnOrFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
                 </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblOr">

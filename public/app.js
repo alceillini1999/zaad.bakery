@@ -59,7 +59,11 @@ $('#formSale')?.addEventListener('submit', async e=>{
 
 /* ---------- EXPENSES (مع صورة) ---------- */
 async function loadExpenses(){
-  const {rows=[]}=await api('/api/expenses/list');
+  const p=new URLSearchParams();
+  if($('#expFrom')?.value)   p.set('from',$('#expFrom').value);
+  if($('#expTo')?.value)     p.set('to',$('#expTo').value);
+  if($('#expMethod')?.value) p.set('method',$('#expMethod').value);
+  const {rows=[]}=await api('/api/expenses/list?'+p.toString());
   const tb=$('#tblExpensesBody');
   if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; return;}
   tb.innerHTML = rows.map(r=>`<tr>
@@ -71,6 +75,8 @@ async function loadExpenses(){
     <td>${r.note||''}</td>
   </tr>`).join('');
 }
+// Filter button for expenses
+$('#btnExpFilter')?.addEventListener('click', loadExpenses);
 $('#formExpense')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const form = e.target;
@@ -82,8 +88,8 @@ $('#formExpense')?.addEventListener('submit', async e=>{
 /* ---------- CREDIT + PAYMENTS ---------- */
 async function loadCredit(){
   const q=new URLSearchParams();
-  if($('#crFrom')?.value) q.set('from',$('#crFrom').value);
-  if($('#crTo')?.value) q.set('to',$('#crTo').value);
+  if($('#crFrom')?.value)     q.set('from',$('#crFrom').value);
+  if($('#crTo')?.value)       q.set('to',$('#crTo').value);
   if($('#crCustomer')?.value) q.set('customer',$('#crCustomer').value);
   const [credits, payments] = await Promise.all([
     api('/api/credits/list?'+q.toString()),
@@ -140,6 +146,8 @@ async function loadCredit(){
     });
   });
 }
+// Filter button for credit
+$('#btnCrFilter')?.addEventListener('click', loadCredit);
 $('#formCredit')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
@@ -157,7 +165,10 @@ $('#formPay')?.addEventListener('submit', async e=>{
 /* ---------- ORDERS + STATUS + PAY + INVOICE ---------- */
 const ORDER_FLOW=['Pending','In-Progress','Done','Delivered'];
 async function loadOrders(){
-  const {rows=[]}=await api('/api/orders/list');
+  const p=new URLSearchParams();
+  if($('#orFrom')?.value) p.set('from',$('#orFrom').value);
+  if($('#orTo')?.value)   p.set('to',$('#orTo').value);
+  const {rows=[]}=await api('/api/orders/list?'+p.toString());
   const statusFilter = $('#orStatusFilter').value;
   let list = rows;
   if (statusFilter) list = list.filter(r=> (r.status||'Pending')===statusFilter);
@@ -208,6 +219,8 @@ async function loadOrders(){
     });
   });
 }
+// Filter buttons for orders
+$('#btnOrFilter')?.addEventListener('click', loadOrders);
 $('#orStatusFilter')?.addEventListener('change', loadOrders);
 
 // submit order
@@ -279,13 +292,195 @@ $('#formCash')?.addEventListener('submit', async e=>{
 
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
-function drawSalesByMethod(){
-  try{
-    const c=document.getElementById('salesByMethodChart');
-    if(c){ c.classList.add('d-none'); c.closest('.card')?.classList.add('d-none'); }
-    if(typeof salesByMethodChart!=='undefined' && salesByMethodChart){ salesByMethodChart.destroy(); salesByMethodChart=null; }
-  }catch{}
+function drawSalesByMethod({cash, till, withdrawal, send}) {
+  // Chart disabled as per user request. Hide the canvas and destroy any existing chart.
+  try {
+    if (salesByMethodChart) { salesByMethodChart.destroy(); salesByMethodChart = null; }
+    const chartEl = document.getElementById('salesByMethodChart');
+    chartEl?.closest('.card')?.classList.add('d-none');
+    chartEl?.classList.add('d-none');
+  } catch (e) {
+    // ignore errors
+  }
   return;
+}
+
+async function runReport(){
+  const q=new URLSearchParams();
+  if($('#repFrom').value) q.set('from',$('#repFrom').value);
+  if($('#repTo').value)   q.set('to',$('#repTo').value);
+
+  const [s,e,c,o,k,p] = await Promise.all([
+    api('/api/sales/list?'+q.toString()),
+    api('/api/expenses/list?'+q.toString()),
+    api('/api/credits/list?'+q.toString()),
+    api('/api/orders/list?'+q.toString()),
+    api('/api/cash/list?'+q.toString()),
+    api('/api/credits/payments/list?'+q.toString()),
+  ]);
+
+  // Sales by method
+  const sCash = s.rows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
+  const sTill = s.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
+  const sWith = s.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
+  const sSend = s.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+const totalSales = sCash + sTill + sWith + sSend;
+
+  // Expenses breakdown
+  const expTot  = e.rows.reduce((a,r)=>a+(+r.amount||0),0);
+  const expCash = e.rows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
+  const expTill = e.rows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
+  const expWith = e.rows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
+  const expSend = e.rows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+
+  // Credit outstanding
+  const crGross = c.rows.reduce((a,r)=>a+((+r.amount||0)-(+r.paid||0)),0);
+  const crPays  = p.rows.reduce((a,r)=>a+(+r.paid||0),0);
+  const crOutstanding = crGross - crPays;
+
+  // Cash counts
+  const morning = k.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+  const evening = k.rows.filter(x=>x.session==='evening').reduce((a,r)=>a+(+r.total||0),0);
+
+  // Outs
+  // Withdrawal out should only count withdrawals recorded via withdraw_out session
+  const withdrawOut = k.rows.filter(x=>x.session==='withdraw_out').reduce((a,r)=>a+(+r.total||0),0);
+  const tillOut     = k.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+  const sendOut     = k.rows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
+
+  // Section 4: Cash available (new formula)
+  const cashAvailable = morning + sCash + withdrawOut - expTot; // per request: cash morning + cash sales + withdrawal-out - total expenses
+
+  // Next day morning (for single-day reports)
+  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
+  let nextMorning = 0;
+  if (from===to){
+    const d = new Date(from+'T00:00:00');
+    d.setDate(d.getDate()+1);
+    const next = d.toISOString().slice(0,10);
+    const kn = await api('/api/cash/list?from='+next+'&to='+next);
+    nextMorning = kn.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+  }
+
+  // Manual cash_out for selected day (session='cash_out')
+  let manualCashOut = 0;
+  if (from===to){
+    const kc = await api('/api/cash/list?from='+from+'&to='+from);
+    manualCashOut = kc.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
+  }
+
+  // Compute cash out based on next day morning and current available cash
+  const computedCashOut = nextMorning - cashAvailable;
+  const cashOut = manualCashOut || computedCashOut;
+
+  // Remaining by channel (carry to next day)
+  const cashRemaining = evening; // align with user request
+  const tillRemaining = sTill - tillOut - expTill;
+  const withRemaining = sWith - withdrawOut - expWith;
+  const sendRemaining = sSend - sendOut - expSend;
+
+  // Build 6 sections
+  const sections = [
+    { title: '1) Expenses', items: [['Expenses', expTot]] },
+    { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
+    { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
+    { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
+    { title: '5) Outs', items: [['Cash Out (next morning - available)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
+    { title: '6) Remaining (carry to next day)', items: [['Cash remaining (evening)', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
+  ,
+    { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
+  ];
+
+  $('#repCards').innerHTML = sections.map(sec => `
+    <div class="col-12"><h5 class="mt-3 mb-2">${sec.title}</h5></div>
+    ${sec.items.map(([t,v])=>`
+      <div class="col-6 col-md-4 col-xl-3">
+        <div class="card mini-stat"><div class="card-body">
+          <div class="text-muted">${t}</div>
+          <div class="fs-4 fw-semibold mt-1">${(+v).toFixed(2)}</div>
+        </div></div>
+      </div>
+    `).join('')}
+  `).join('');
+
+  drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
+  $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
+
+  // Prefill & Save manual Cash Out UI
+  }
+
+$('#btnRunReport')?.addEventListener('click', runReport);
+
+/* ---------- Boot ---------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // default dates
+  // Initialize default dates for various date filters to today
+  ['salesFrom','salesTo','repFrom','repTo','expFrom','expTo','crFrom','crTo','orFrom','orTo'].forEach(id=>{
+    if($('#'+id)) $('#'+id).value = today();
+  });
+  loadDenoms();
+
+  // load lists initially
+  loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
+});
+$('#btnRunReport')?.addEventListener('click', runReport);
+
+
+// Till No Out manual box handlers (Reports)
+(function(){
+  const input = $('#repTillOutInput'), btn = $('#btnSaveTillOut');
+  if (!input || !btn) return;
+  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
+  // Only enabled for single day
+  if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
+  // Load existing till_out
+  api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
+    const existing = kc.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+    if (existing>0) input.value = existing.toFixed(2);
+  });
+  btn.onclick = async ()=>{
+    const val = +($('#repTillOutInput').value||0);
+    if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+    await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: from, session:'till_out', total: val, note:'report till out' }) });
+    showToast('Till Out saved'); runReport();
+  };
+})();
+
+
+
+// Quick Outs (Manual) on Cash tab
+$('#btnCashOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#cashOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'cash_out', total: val, note:'cash tab manual' }) });
+  showToast('Cash Out saved'); $('#cashOutInput').value=''; runReport?.(); loadCash?.(); 
+});
+$('#btnTillOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#tillOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'till_out', total: val, note:'cash tab manual' }) });
+  showToast('Till No Out saved'); $('#tillOutInput').value=''; runReport?.(); loadCash?.();
+});
+$('#btnSendOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#sendOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'send_out', total: val, note:'cash tab manual' }) });
+  showToast('Send Money Out saved'); $('#sendOutInput').value=''; runReport?.(); loadCash?.();
+});
+
+// --- Manual Amount mode for Till/Send on Cash tab ---
+function updateCashTotalManual(){
+  const v = parseFloat($('#manualOut')?.value || '0') || 0;
+  $('#cashTotal').textContent = v.toFixed(2);
+}
+function toggleCashMode(){
+  const s = document.querySelector('input[name="session"]:checked')?.value || 'morning';
+  const denoms = $('#denoms'), man = $('#manualOutWrap');
+  if (!denoms || !man) return;
+  if (s==='till_out' || s==='send_out'){
+    denoms.classList.add('d-none'); man.classList.remove('d-none');
+    updateCashTotalManual();
+  } else {
+    man.classList.add('d-none'); denoms.classList.remove('d-none');
+    updateCashTotal();
+  }
 }
 // listeners
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -294,12 +489,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
   toggleCashMode();
 });
 
-
-$('#btnExpFilter')?.addEventListener('click', loadExpenses);
-
-$('#btnCrFilter')?.addEventListener('click', loadCredit);
-
-$('#btnOrFilter')?.addEventListener('click', loadOrders);
-
-const _dedupeReportBtn=()=>{ const btns=$$('#btnRunReport'); if(btns.length>1) btns.slice(1).forEach(b=>b.remove()); };
-document.addEventListener('DOMContentLoaded', _dedupeReportBtn);
