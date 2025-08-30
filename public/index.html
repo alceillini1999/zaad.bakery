@@ -25,7 +25,6 @@
         <img src="/img/zaad-logo.jpeg" alt="Zaad" width="36" height="36" class="rounded">
         <span class="fw-bold">Zaad Bakery</span>
       </a>
-
       <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
         <a href="/invoice.html" class="btn btn-sm btn-outline-dark"><i class="bi bi-receipt"></i> Invoices</a>
         <button id="btnShare" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code"></i> Share</button>
@@ -59,7 +58,7 @@
               <div class="card h-100">
                 <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
                 <div class="card-body">
-                  <!-- طلبك: إزالة Product / Quantity / Unit Price / Till Number -->
+                  <!-- Sales form -->
                   <form id="formSale" class="vstack gap-3">
                     <div>
                       <label class="form-label">Payment Method</label>
@@ -96,7 +95,8 @@
                     <input type="date" class="form-control form-control-sm" id="salesFrom">
                     <input type="date" class="form-control form-control-sm" id="salesTo">
                     <select id="salesMethod" class="form-select form-select-sm">
-                      <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
+                      <option value="">All</option>
+                      <option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
                     </select>
                     <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
                     <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
@@ -137,17 +137,16 @@
                       <div class="col">
                         <label class="form-label">Payment</label>
                         <select class="form-select" name="method">
-                          <option>Cash</option><option>Withdrawal</option>
+                          <option>Cash</option>
+                          <option>Withdrawal</option>
                         </select>
                       </div>
                     </div>
-
-                    <!-- طلبك: رفع صورة فاتورة -->
+                    <!-- Receipt upload -->
                     <div>
                       <label class="form-label">Receipt Photo (optional)</label>
                       <input class="form-control" type="file" name="receipt" accept="image/*">
                     </div>
-
                     <div>
                       <label class="form-label">Note</label>
                       <textarea class="form-control" name="note" rows="2"></textarea>
@@ -162,10 +161,27 @@
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white fw-semibold">Expenses</div>
+                <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+                  <span>Expenses</span>
+                  <div class="d-flex gap-2">
+                    <input type="date" class="form-control form-control-sm" id="expFrom">
+                    <input type="date" class="form-control form-control-sm" id="expTo">
+                    <select id="expMethod" class="form-select form-select-sm">
+                      <option value="">All</option>
+                      <option>Cash</option>
+                      <option>Withdrawal</option>
+                    </select>
+                    <input type="text" class="form-control form-control-sm" id="expNote" placeholder="Note">
+                    <button id="btnExpensesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                  </div>
+                </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblExp">
-                    <thead class="table-light"><tr><th>Date</th><th>Item</th><th class="text-end">Amount</th><th>Method</th><th>Receipt</th><th>Note</th></tr></thead>
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th><th>Item</th><th class="text-end">Amount</th><th>Method</th><th>Receipt</th><th>Note</th>
+                      </tr>
+                    </thead>
                     <tbody id="tblExpensesBody"><tr><td colspan="6" class="text-secondary p-4">No data.</td></tr></tbody>
                   </table>
                 </div>
@@ -207,16 +223,23 @@
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2">
                   <span>Credit</span>
-                  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin"></i> Record Payment</button>
+                  <input type="text" class="form-control form-control-sm" id="crCustomerFilter" placeholder="Customer" style="max-width: 150px;">
+                  <select id="crStatusFilter" class="form-select form-select-sm" style="max-width: 120px;">
+                    <option value="">All</option>
+                    <option value="unpaid">Unpaid</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                  <button class="btn btn-outline-primary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin"></i> Record Payment</button>
                 </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblCr">
-                    <thead class="table-light"><tr>
-                      <th>Date</th><th>Customer</th><th>Item</th>
-                      <th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Action</th>
-                    </tr></thead>
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th><th>Customer</th><th>Item</th><th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Action</th>
+                      </tr>
+                    </thead>
                     <tbody id="tblCreditBody"><tr><td colspan="7" class="text-secondary p-4">No data.</td></tr></tbody>
                   </table>
                 </div>
@@ -240,7 +263,6 @@
                       <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
                     </div>
                     <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
-                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
                   </form>
                 </div>
               </div>
@@ -248,20 +270,29 @@
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white fw-semibold d-flex gap-2 align-items-center">
+                <div class="card-header bg-white fw-semibold d-flex align-items-center">
                   <span>Orders</span>
-                  <select id="orStatusFilter" class="form-select form-select-sm ms-auto" style="max-width:200px">
-                    <option value="">All Status</option>
-                    <option>Pending</option><option>In-Progress</option><option>Done</option><option>Delivered</option>
-                  </select>
+                  <div class="ms-auto d-flex gap-2">
+                    <input type="date" class="form-control form-control-sm" id="orFrom">
+                    <input type="date" class="form-control form-control-sm" id="orTo">
+                    <input type="text" class="form-control form-control-sm" id="orCustomerFilter" placeholder="Customer">
+                    <select id="orStatusFilter" class="form-select form-select-sm">
+                      <option value="">All Status</option>
+                      <option>Pending</option>
+                      <option>In-Progress</option>
+                      <option>Done</option>
+                      <option>Delivered</option>
+                    </select>
+                    <button id="btnOrdersFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                  </div>
                 </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblOr">
-                    <thead class="table-light"><tr>
-                      <th>Date</th><th>Phone</th><th>Item</th>
-                      <th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th>
-                      <th>Status</th><th>Actions</th>
-                    </tr></thead>
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th><th>Phone</th><th>Item</th><th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Status</th><th>Actions</th>
+                      </tr>
+                    </thead>
                     <tbody id="tblOrdersBody"><tr><td colspan="8" class="text-secondary p-4">No data.</td></tr></tbody>
                   </table>
                 </div>
@@ -284,16 +315,13 @@
                       <div class="form-check"><input class="form-check-input" type="radio" name="session" value="withdraw_out"> <label class="form-check-label">Withdrawal Out</label></div>
                       <div class="form-check"><input class="form-check-input" type="radio" name="session" value="till_out"> <label class="form-check-label">Till No Out</label></div>
                       <div class="form-check"><input class="form-check-input" type="radio" name="session" value="send_out"> <label class="form-check-label">Send Money Out</label></div>
-
                     </div>
                     <div class="row g-2" id="denoms"></div>
-
                     <!-- Manual amount for Till/Send Out -->
                     <div id="manualOutWrap" class="d-none">
                       <label class="form-label">Amount</label>
                       <input type="number" step="0.01" min="0" class="form-control" id="manualOut" placeholder="0">
                     </div>
-    
                     <div><label class="form-label">Note</label><input class="form-control" name="note" id="cashNote" placeholder="Optional note"></div>
                     <div class="d-flex justify-content-between align-items-center">
                       <strong>Total:</strong>
@@ -310,7 +338,9 @@
                 <div class="card-header bg-white fw-semibold">Cash History</div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblCash">
-                    <thead class="table-light"><tr><th>Date</th><th>Session</th><th class="text-end">Total</th><th>Note</th></tr></thead>
+                    <thead class="table-light">
+                      <tr><th>Date</th><th>Session</th><th class="text-end">Total</th><th>Note</th></tr>
+                    </thead>
                     <tbody id="tblCashBody"><tr><td colspan="4" class="text-secondary p-4">No data.</td></tr></tbody>
                   </table>
                 </div>
@@ -320,8 +350,7 @@
         </section>
 
         <!-- REPORTS -->
-        <section class="tab-pane fade" 
-id="tabReports">
+        <section class="tab-pane fade" id="tabReports">
           <div class="card mb-4">
             <div class="card-header bg-white fw-semibold d-flex flex-wrap gap-2 align-items-center">
               <span>Filters</span>
@@ -347,8 +376,7 @@ id="tabReports">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/app.js"></script>
 
-
-<!-- Credit Pay Modal -->
+  <!-- Credit Pay Modal -->
   <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -387,8 +415,7 @@ id="tabReports">
     </div>
   </div>
 
-
-<!-- Order Pay Modal -->
+  <!-- Order Pay Modal -->
   <div class="modal fade" id="orderPayModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
