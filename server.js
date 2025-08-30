@@ -197,7 +197,12 @@ function sheetSpec(type, r) {
       headers: ['ID','DateISO','CreatedAt','UpdatedAt','Customer','Item','Amount','Paid','Remaining','Note','PaymentDateISO'],
       row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.customer||'', r.item||'', normNum(r.amount), normNum(r.paid), normNum(r.remaining), r.note||'', r.paymentDateISO||'']
     };
-    case 'credit_payments': return { name: tab('CreditPayments'), headers: ['ID','DateISO','CreatedAt','UpdatedAt','Customer','Paid','Method','Note'], row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.customer||'', normNum(r.paid), r.method||'', r.note||''] };
+    case 'credit_payments': return {
+      name: tab('CreditPayments'),
+      // Added Method column per user request
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Customer','Paid','Method','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.customer||'', normNum(r.paid), r.method||'', r.note||'']
+    };
     case 'orders': return {
       name: tab('Orders'),
       headers: ['ID','DateISO','CreatedAt','UpdatedAt','Phone','Item','Amount','Paid','Remaining','Status','Note'],
@@ -558,7 +563,17 @@ app.post('/api/credits/pay', async (req,res)=>{
     if(!customer || !(amt>0)) return res.status(400).json({ ok:false, error:'customer & positive paid required' });
 
     const now = new Date().toISOString();
-    const payRec = { id: newId(), customer, paid: amt, method: b.method || 'Cash', note: b.note || '', dateISO: todayISO(), createdAt: now, updatedAt: now };
+    const payRec = {
+      id: newId(),
+      customer,
+      paid: amt,
+      // include the payment method as requested (default Cash)
+      method: b.method || 'Cash',
+      note: b.note || '',
+      dateISO: todayISO(),
+      createdAt: now,
+      updatedAt: now
+    };
     await appendRecord('credit_payments', payRec);
     io.emit('new-record', { type:'credit_payments', record: payRec });
 
@@ -756,9 +771,10 @@ const expSend = sumBy(expenses, r=>/send/i.test(r.method)?normNum(r.amount):0);
     const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>normNum(r.total));
     const evening = sumBy(cash.filter(x=>x.session==='evening'), r=>normNum(r.total));
 const tillOut     = sumBy(cash.filter(x=>x.session==='till_out'), r=>normNum(r.total));
-const withdrawOut = sumBy(cash.filter(x=>x.session==='withdraw_out' || x.session==='eod'), r=>normNum(r.total));
+const withdrawOut = sumBy(cash.filter(x=>x.session==='withdraw_out'), r=>normNum(r.total));
 const sendOut     = sumBy(cash.filter(x=>x.session==='send_out'), r=>normNum(r.total));
-const cashAvailable = morning + sCash + withdrawOut - expCash;
+// Cash available is: cash morning + cash sales + withdrawal-out - total expenses
+const cashAvailable = morning + sCash + withdrawOut - expTot;
         // Manual cash_out for selected day
     let manualCashOut = 0;
     if (from===to) {
@@ -768,7 +784,19 @@ const cashAvailable = morning + sCash + withdrawOut - expCash;
 const eod     = sumBy(cash.filter(x=>x.session==='withdraw_out' || x.session==='eod'),     r=>normNum(r.total));
     const expected = morning + sCash - expTot;
     const diff = expected - evening;
-    const computedCashOut = Math.max(0, cashAvailable - evening);
+// Compute next morning cash (for next day) to determine cash out
+let nextMorning = 0;
+try {
+  if (from === to) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + 1);
+    const next = d.toISOString().slice(0,10);
+    // Read all cash records and sum the next day morning entries
+    const allCash = await readAll('cash');
+    nextMorning = sumBy(allCash.filter(x => (x.session === 'morning') && ((x.dateISO || x.date) === next)), r => normNum(r.total));
+  }
+} catch (e) { nextMorning = 0; }
+const computedCashOut = nextMorning - cashAvailable;
 
     res.setHeader('Content-Type','application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="zaad-report-${from}_${to}.pdf"`);
@@ -787,7 +815,8 @@ const eod     = sumBy(cash.filter(x=>x.session==='withdraw_out' || x.session==='
   ['4) Cash available in cashier', null],
   ['Cash available (computed)', cashAvailable],
   ['5) Outs', null],
-  ['Cash Out (available - evening)', manualCashOut || computedCashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut],
+  // Cash Out is defined as next morning cash minus current day's available cash
+  ['Cash Out (next morning - available)', manualCashOut || computedCashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut],
   ['6) Remaining (carry to next day)', null],
   ['Cash remaining (evening)', evening], ['Till No remaining', sTill - tillOut - expTill], ['Withdrawal remaining', sWith - withdrawOut - expWith], ['Send Money remaining', sSend - sendOut - expSend],
   ['7) Total Sales', null],
