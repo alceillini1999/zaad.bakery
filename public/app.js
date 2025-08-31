@@ -357,7 +357,7 @@ const totalSales = sCash + sTill + sWith + sSend;
   let manualCashOut = 0;
   if (from===to){
     const kc = await api('/api/cash/list?from='+from+'&to='+from);
-    manualCashOut = kcRows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
+    manualCashOut = kc.rows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
   const computedCashOut = Math.max(0, cashAvailable - evening); // align with PDF & user: available - evening
@@ -377,7 +377,6 @@ const totalSales = sCash + sTill + sWith + sSend;
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
     { title: '6) Remaining (carry to next day)', items: [['Cash remaining (evening)', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
-  ,
     { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
   ];
 
@@ -422,7 +421,7 @@ $('#btnRunReport')?.addEventListener('click', runReport);
   if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
   // Load existing till_out
   api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
-    const existing = kcRows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+    const existing = kc.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
     if (existing>0) input.value = existing.toFixed(2);
   });
   btn.onclick = async ()=>{
