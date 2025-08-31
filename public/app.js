@@ -58,20 +58,11 @@ $('#formSale')?.addEventListener('submit', async e=>{
 });
 
 /* ---------- EXPENSES (مع صورة) ---------- */
-// Expenses loader with filters (date range + method)
 async function loadExpenses(){
-  // Build query params based on filter inputs
-  const p = new URLSearchParams();
-  if($('#expFrom')?.value)   p.set('from', $('#expFrom').value);
-  if($('#expTo')?.value)     p.set('to',   $('#expTo').value);
-  if($('#expMethod')?.value) p.set('method', $('#expMethod').value);
-  const {rows=[]} = await api('/api/expenses/list?'+p.toString());
-  const tb = $('#tblExpensesBody');
-  if(!rows.length){
-    tb.innerHTML = `<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r => `<tr>
+  const {rows=[]}=await api('/api/expenses/list');
+  const tb=$('#tblExpensesBody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
     <td>${(r.dateISO||'').slice(0,10)}</td>
     <td>${r.item||''}</td>
     <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
@@ -88,33 +79,24 @@ $('#formExpense')?.addEventListener('submit', async e=>{
   if(res.ok){ form.reset(); showToast('Expense saved'); loadExpenses(); } else showToast(res.error||'Failed',false);
 });
 
-// Expense filter button listener
-$('#btnExpFilter')?.addEventListener('click', loadExpenses);
-
 /* ---------- CREDIT + PAYMENTS ---------- */
 async function loadCredit(){
-  // Build query based on filters (from/to/customer)
-  const q = new URLSearchParams();
-  if($('#crFrom')?.value)     q.set('from', $('#crFrom').value);
-  if($('#crTo')?.value)       q.set('to',   $('#crTo').value);
-  if($('#crCustomer')?.value) q.set('customer', $('#crCustomer').value);
   const [credits, payments] = await Promise.all([
-    api('/api/credits/list?' + q.toString()),
-    api('/api/credits/payments/list?' + q.toString())
+    api('/api/credits/list'),
+    api('/api/credits/payments/list')
   ]);
-  const rows = credits.rows || [], pays = payments.rows || [];
-  const tb = $('#tblCreditBody');
-  if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; return; }
-  // Aggregate payments by customer
+  const rows=creditsRows||[], pays=paymentsRows||[];
+  const tb=$('#tblCreditBody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; return; }
+
+  // جمع المدفوعات لكل عميل
   const paysBy = {};
-  pays.forEach(p => {
-    const k = (p.customer||'').trim();
-    paysBy[k] = (paysBy[k] || 0) + (+p.paid || 0);
-  });
-  tb.innerHTML = rows.map(r => {
-    const name = r.customer || '';
-    const paidNow = (+r.paid || 0) + (paysBy[name] || 0);
-    const remaining = Math.max(0, (+r.amount || 0) - paidNow);
+  pays.forEach(p=>{ const k=(p.customer||'').trim(); paysBy[k]=(paysBy[k]||0)+(+p.paid||0); });
+
+  tb.innerHTML = rows.map(r=>{
+    const name = r.customer||'';
+    const paidNow = (+r.paid||0) + (paysBy[name]||0);
+    const remaining = Math.max(0,(+r.amount||0)-paidNow);
     return `<tr>
       <td>${(r.dateISO||'').slice(0,10)}</td>
       <td>${name}</td>
@@ -125,12 +107,13 @@ async function loadCredit(){
       <td><button class="btn btn-sm btn-outline-primary btnCrPay" data-name="${encodeURIComponent(name)}">Pay</button></td>
     </tr>`;
   }).join('');
-  // Attach pay button handler
-  $$('.btnCrPay').forEach(b => {
-    b.addEventListener('click', () => {
-      const name = decodeURIComponent(b.dataset.name || '');
-      const f = $('#formPay'); f.customer.value = name;
-      // ensure method field exists
+
+  // زر دفع من الجدول
+  $$('.btnCrPay').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const name=decodeURIComponent(b.dataset.name||'');
+      const f=$('#formPay'); f.customer.value=name;
+      // Ensure payment method field exists in the Credit Pay modal
       let _m = f.querySelector('[name="method"]');
       if(!_m){
         const block = document.createElement('div');
@@ -148,6 +131,7 @@ async function loadCredit(){
         _m = f.querySelector('[name="method"]');
       }
       _m.value = 'Cash';
+
       new bootstrap.Modal($('#payModal')).show();
     });
   });
@@ -166,23 +150,15 @@ $('#formPay')?.addEventListener('submit', async e=>{
     document.querySelector('[data-bs-target="#tabSales"]')?.click(); } else showToast(res.error||'Failed',false);
 });
 
-// Credit filter button listener
-$('#btnCrFilter')?.addEventListener('click', loadCredit);
-
 /* ---------- ORDERS + STATUS + PAY + INVOICE ---------- */
 const ORDER_FLOW=['Pending','In-Progress','Done','Delivered'];
 async function loadOrders(){
-  // Build query params for date filters
-  const p = new URLSearchParams();
-  if($('#orFrom')?.value) p.set('from', $('#orFrom').value);
-  if($('#orTo')?.value)   p.set('to',   $('#orTo').value);
-  const {rows=[]} = await api('/api/orders/list?'+p.toString());
+  const {rows=[]}=await api('/api/orders/list');
   const statusFilter = $('#orStatusFilter').value;
   let list = rows;
-  // filter by status if selected
-  if (statusFilter) list = list.filter(r => (r.status||'Pending') === statusFilter);
-  const tb = $('#tblOrdersBody');
-  if(!list.length){ tb.innerHTML = `<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`; return; }
+  if (statusFilter) list = list.filter(r=> (r.status||'Pending')===statusFilter);
+  const tb=$('#tblOrdersBody');
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`; return;}
 
   tb.innerHTML = list.map(r=>{
     const next = ORDER_FLOW[(ORDER_FLOW.indexOf(r.status||'Pending')+1)%ORDER_FLOW.length];
@@ -229,9 +205,6 @@ async function loadOrders(){
   });
 }
 $('#orStatusFilter')?.addEventListener('change', loadOrders);
-
-// Orders filter button listener
-$('#btnOrFilter')?.addEventListener('click', loadOrders);
 
 // submit order
 $('#formOrder')?.addEventListener('submit', async e=>{
@@ -302,105 +275,113 @@ $('#formCash')?.addEventListener('submit', async e=>{
 
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
-// Disable chart drawing as per user request; hide chart element and destroy any existing chart
 function drawSalesByMethod({cash, till, withdrawal, send}) {
-  try {
-    if(salesByMethodChart) { salesByMethodChart.destroy(); salesByMethodChart = null; }
-    const chartEl = document.getElementById('salesByMethodChart');
-    chartEl?.closest('.card')?.classList.add('d-none');
-    chartEl?.classList.add('d-none');
-  } catch (e) {
-    // ignore errors
-  }
-  return;
+  const ctx = document.getElementById('salesByMethodChart'); if(!ctx) return;
+  const data=[cash,till,withdrawal,send].map(x=>+x||0);
+  if(salesByMethodChart) salesByMethodChart.destroy();
+  salesByMethodChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:['Cash','Till No','Withdrawal','Send Money'], datasets:[{ label:'Sales (KES)', data }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
 }
 
 async function runReport(){
-  // Dates for report; default to today if empty
-  const from = $('#repFrom').value || today();
-  const to   = $('#repTo').value   || from;
-  // Helper: safely call API and return rows array; returns [] on error
-  const safe = async (url) => {
-    try {
-      const r = await api(url);
-      return Array.isArray(r?.rows) ? r.rows : [];
-    } catch {
-      return [];
-    }
-  };
-  // Build query string for list endpoints
-  const qs = new URLSearchParams({ from, to });
-  // Fetch data safely
-  const [sRows, eRows, cRows, oRows, kRows, pRows] = await Promise.all([
-    safe('/api/sales/list?' + qs.toString()),
-    safe('/api/expenses/list?' + qs.toString()),
-    safe('/api/credits/list?' + qs.toString()),
-    safe('/api/orders/list?' + qs.toString()),
-    safe('/api/cash/list?' + qs.toString()),
-    safe('/api/credits/payments/list?' + qs.toString()),
+  const q=new URLSearchParams();
+  if($('#repFrom').value) q.set('from',$('#repFrom').value);
+  if($('#repTo').value)   q.set('to',$('#repTo').value);
+
+  const [s,e,c,o,k,p] = await Promise.all([
+    api('/api/sales/list?'+q.toString()),
+    api('/api/expenses/list?'+q.toString()),
+    api('/api/credits/list?'+q.toString()),
+    api('/api/orders/list?'+q.toString()),
+    api('/api/cash/list?'+q.toString()),
+    api('/api/credits/payments/list?'+q.toString()),
   ]);
-  // Sales by method totals
-  const sCash = sRows.reduce((a, r) => a + (/cash/i.test(r.method) ? +r.amount : 0), 0);
-  const sTill = sRows.reduce((a, r) => a + (/till/i.test(r.method) ? +r.amount : 0), 0);
-  const sWith = sRows.reduce((a, r) => a + (/withdraw/i.test(r.method) ? +r.amount : 0), 0);
-  const sSend = sRows.reduce((a, r) => a + (/send/i.test(r.method) ? +r.amount : 0), 0);
-  const totalSales = sCash + sTill + sWith + sSend;
-  // Expenses breakdown totals
-  const expTot  = eRows.reduce((a, r) => a + (+r.amount || 0), 0);
-  const expCash = eRows.reduce((a, r) => a + (/cash/i.test(r.method) ? +r.amount : 0), 0);
-  const expTill = eRows.reduce((a, r) => a + (/till/i.test(r.method) ? +r.amount : 0), 0);
-  const expWith = eRows.reduce((a, r) => a + (/withdraw/i.test(r.method) ? +r.amount : 0), 0);
-  const expSend = eRows.reduce((a, r) => a + (/send/i.test(r.method) ? +r.amount : 0), 0);
-  // Credit outstanding (unused but computed)
-  const crGross = cRows.reduce((a, r) => a + ((+r.amount || 0) - (+r.paid || 0)), 0);
-  const crPays  = pRows.reduce((a, r) => a + (+r.paid || 0), 0);
+
+
+
+  // Tolerant rows to avoid crashing when any endpoint returns an error
+  const sRows = (s && Array.isArray(sRows)) ? sRows : [];
+  const eRows = (e && Array.isArray(eRows)) ? eRows : [];
+  const cRows = (c && Array.isArray(cRows)) ? cRows : [];
+  const oRows = (o && Array.isArray(o.rows)) ? o.rows : [];
+  const kRows = (k && Array.isArray(kRows)) ? kRows : [];
+  const pRows = (p && Array.isArray(pRows)) ? pRows : [];
+  // Sales by method
+  const sCash = sRows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
+  const sTill = sRows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
+  const sWith = sRows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
+  const sSend = sRows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+const totalSales = sCash + sTill + sWith + sSend;
+
+  // Expenses breakdown
+  const expTot  = eRows.reduce((a,r)=>a+(+r.amount||0),0);
+  const expCash = eRows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
+  const expTill = eRows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
+  const expWith = eRows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
+  const expSend = eRows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+
+  // Credit outstanding
+  const crGross = cRows.reduce((a,r)=>a+((+r.amount||0)-(+r.paid||0)),0);
+  const crPays  = pRows.reduce((a,r)=>a+(+r.paid||0),0);
   const crOutstanding = crGross - crPays;
+
   // Cash counts
-  const morning = kRows.filter(x => x.session === 'morning').reduce((a, r) => a + (+r.total || 0), 0);
-  const evening = kRows.filter(x => x.session === 'evening').reduce((a, r) => a + (+r.total || 0), 0);
-  // Outs (withdrawal out only, not eod)
-  const withdrawOut = kRows.filter(x => x.session === 'withdraw_out').reduce((a, r) => a + (+r.total || 0), 0);
-  const tillOut     = kRows.filter(x => x.session === 'till_out').reduce((a, r) => a + (+r.total || 0), 0);
-  const sendOut     = kRows.filter(x => x.session === 'send_out').reduce((a, r) => a + (+r.total || 0), 0);
-  // Cash available = Cash Morning + Sales Cash + WithdrawalOut - Total Expenses
-  const cashAvailable = morning + sCash + withdrawOut - expTot;
-  // Next day morning for single day report
+  const morning = kRows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+  const evening = kRows.filter(x=>x.session==='evening').reduce((a,r)=>a+(+r.total||0),0);
+
+  // Outs
+  const withdrawOut = kRows.filter(x=>x.session==='withdraw_out' || x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
+  const tillOut     = kRows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+  const sendOut     = kRows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
+
+  // Section 4: Cash available (correct formula)
+  const cashAvailable = morning + sCash + withdrawOut - expTot; // per request: cash morning + cash sales + withdrawal-out - cash expenses
+
+  // Next day morning (for single-day reports)
+  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
   let nextMorning = 0;
-  if (from === to) {
-    const d = new Date(from + 'T00:00:00');
-    d.setDate(d.getDate() + 1);
-    const nextDate = d.toISOString().slice(0, 10);
-    const k2 = await safe('/api/cash/list?from=' + nextDate + '&to=' + nextDate);
-    nextMorning = k2.filter(x => x.session === 'morning').reduce((a, r) => a + (+r.total || 0), 0);
+  if (from===to){
+    const d = new Date(from+'T00:00:00');
+    d.setDate(d.getDate()+1);
+    const next = d.toISOString().slice(0,10);
+    const kn = await api('/api/cash/list?from='+next+'&to='+next);
+    nextMorning = kn.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
   }
-  // Manual cash out recorded for the day
+
+  // Manual cash_out for selected day (session='cash_out')
   let manualCashOut = 0;
-  if (from === to) {
-    const kc = await safe('/api/cash/list?from=' + from + '&to=' + from);
-    manualCashOut = kc.filter(x => x.session === 'cash_out').reduce((a, r) => a + (+r.total || 0), 0);
+  if (from===to){
+    const kc = await api('/api/cash/list?from='+from+'&to='+from);
+    manualCashOut = kcRows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
-  // Computed cash out = next morning - cash available
-  const computedCashOut = (nextMorning || 0) - cashAvailable;
+
+  const computedCashOut = Math.max(0, cashAvailable - evening); // align with PDF & user: available - evening
   const cashOut = manualCashOut || computedCashOut;
-  // Remaining (carry to next day)
-  const cashRemaining = evening;
+
+  // Remaining by channel (carry to next day)
+  const cashRemaining = evening; // align with user request
   const tillRemaining = sTill - tillOut - expTill;
   const withRemaining = sWith - withdrawOut - expWith;
   const sendRemaining = sSend - sendOut - expSend;
-  // Build report sections
+
+  // Build 6 sections
   const sections = [
     { title: '1) Expenses', items: [['Expenses', expTot]] },
     { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
     { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
-    { title: '5) Outs', items: [['Cash Out (next morning - available)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
+    { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
     { title: '6) Remaining (carry to next day)', items: [['Cash remaining (evening)', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
+  ,
     { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
   ];
-  // Render the report cards
+
   $('#repCards').innerHTML = sections.map(sec => `
     <div class="col-12"><h5 class="mt-3 mb-2">${sec.title}</h5></div>
-    ${sec.items.map(([t,v]) => `
+    ${sec.items.map(([t,v])=>`
       <div class="col-6 col-md-4 col-xl-3">
         <div class="card mini-stat"><div class="card-body">
           <div class="text-muted">${t}</div>
@@ -409,20 +390,19 @@ async function runReport(){
       </div>
     `).join('')}
   `).join('');
-  // Hide chart (drawSalesByMethod will hide it)
-  drawSalesByMethod({ cash: sCash, till: sTill, withdrawal: sWith, send: sSend });
-  // PDF download link
+
+  drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
   $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
-}
+
+  // Prefill & Save manual Cash Out UI
+  }
 
 $('#btnRunReport')?.addEventListener('click', runReport);
 
 /* ---------- Boot ---------- */
 document.addEventListener('DOMContentLoaded', ()=>{
-  // default dates for all date filters (sales, report, expenses, credit, orders)
-  ['salesFrom','salesTo','repFrom','repTo','expFrom','expTo','crFrom','crTo','orFrom','orTo'].forEach(id => {
-    if ($('#'+id)) $('#'+id).value = today();
-  });
+  // default dates
+  ['salesFrom','salesTo','repFrom','repTo'].forEach(id=>{ if($('#'+id)) $('#'+id).value=today(); });
   loadDenoms();
 
   // load lists initially
@@ -440,7 +420,7 @@ $('#btnRunReport')?.addEventListener('click', runReport);
   if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
   // Load existing till_out
   api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
-    const existing = kc.rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+    const existing = kcRows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
     if (existing>0) input.value = existing.toFixed(2);
   });
   btn.onclick = async ()=>{
