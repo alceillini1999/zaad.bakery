@@ -379,14 +379,18 @@ const totalSales = sCash + sTill + sWith + sSend;
   // Remaining (carry to next day): difference between cash available and cash counted in the evening
   const remainingCarry = cashAvailable - evening;
 
-  // Build 6 sections
+  
+  const tillRem = (typeof sTill!=='undefined'?sTill:0) - (typeof tillOut!=='undefined'?tillOut:0);
+  const withRem = (typeof sWith!=='undefined'?sWith:0) - (typeof withdrawOut!=='undefined'?withdrawOut:0);
+  const sendRem = (typeof sSend!=='undefined'?sSend:0) - (typeof sendOut!=='undefined'?sendOut:0);
+// Build 6 sections
   const sections = [
     { title: '1) Expenses', items: [['Expenses', expTot]] },
     { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
     { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
-    { title: '6) Remaining (carry to next day)', items: [['Cash available in cashier - Cash evening', remainingCarry]] },
+    { title: '6) Remaining (carry to next day)', items: [['cash Remaining', remainingCarry], ['till Remaining (till sales - till out)', tillRem], ['withdraw Remaining (withdrawel - withdrawel out)', withRem], ['send money Remaining (send money sales - send money out)', sendRem]] },
     { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
   ];
 
