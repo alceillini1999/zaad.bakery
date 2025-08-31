@@ -353,16 +353,20 @@ const totalSales = sCash + sTill + sWith + sSend;
     return val;
   }
   let rawFrom = $('#repFrom').value || today();
-  let rawTo = $('#repTo').value || rawFrom;
+  let rawTo   = $('#repTo').value || rawFrom;
   const from = normalizeDate(rawFrom);
   const to   = normalizeDate(rawTo);
+  // Compute next day's morning based on the day after the 'to' date (or 'from' if 'to' is empty).
   let nextMorning = 0;
-  if (from===to){
-    const d = new Date(from+'T00:00:00');
-    d.setDate(d.getDate()+1);
-    const next = (d.getFullYear()) + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  {
+    const baseDate = to || from;
+    const d = new Date(baseDate + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    // Format date in YYYY-MM-DD for local timezone (avoid UTC offset)
+    const next = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     const kn = await api('/api/cash/list?from='+next+'&to='+next);
-    nextMorning = kn.rows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+    const knRows = (kn && Array.isArray(kn.rows)) ? kn.rows : [];
+    nextMorning = knRows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
   }
 
   // Manual cash_out for selected day (session='cash_out')
@@ -373,24 +377,21 @@ const totalSales = sCash + sTill + sWith + sSend;
     manualCashOut = kcRows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
-  const computedCashOut = Math.max(0, cashAvailable - evening); // align with PDF & user: available - evening
-  const cashOut = manualCashOut || computedCashOut;
+  // Compute Cash Out based purely on cash difference (cash evening minus next morning)
+  const computedCashOut = Math.max(0, evening - nextMorning);
+  const cashOut = computedCashOut;
 
   // Remaining (carry to next day): difference between cash available and cash counted in the evening
   const remainingCarry = cashAvailable - evening;
 
-  
-  const tillRem = (typeof sTill!=='undefined'?sTill:0) - (typeof tillOut!=='undefined'?tillOut:0);
-  const withRem = (typeof sWith!=='undefined'?sWith:0) - (typeof withdrawOut!=='undefined'?withdrawOut:0);
-  const sendRem = (typeof sSend!=='undefined'?sSend:0) - (typeof sendOut!=='undefined'?sendOut:0);
-// Build 6 sections
+  // Build 6 sections
   const sections = [
     { title: '1) Expenses', items: [['Expenses', expTot]] },
     { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
     { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
-    { title: '6) Remaining (carry to next day)', items: [['cash Remaining', remainingCarry], ['till Remaining (till sales - till out)', tillRem], ['withdraw Remaining (withdrawel - withdrawel out)', withRem], ['send money Remaining (send money sales - send money out)', sendRem]] },
+    { title: '6) Remaining (carry to next day)', items: [['Cash available in cashier - Cash evening', remainingCarry]] },
     { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
   ];
 
