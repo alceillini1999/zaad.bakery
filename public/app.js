@@ -373,9 +373,10 @@ const totalSales = sCash + sTill + sWith + sSend;
     manualCashOut = kcRows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
-  // Updated Cash Out calculation: cash evening minus next day's morning
+  // Compute Cash Out automatically: difference between evening cash and next day's morning cash (ignore manual cash_out)
   const computedCashOut = Math.max(0, evening - nextMorning);
-  const cashOut = manualCashOut || computedCashOut;
+  // Always use computed cash out (ignore manual cash_out)
+  const cashOut = computedCashOut;
 
   // Remaining (carry to next day): difference between cash available and cash counted in the evening
   const remainingCarry = cashAvailable - evening;
