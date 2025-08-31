@@ -85,7 +85,9 @@ async function loadCredit(){
     api('/api/credits/list'),
     api('/api/credits/payments/list')
   ]);
-  const rows=creditsRows||[], pays=paymentsRows||[];
+  // Safely extract rows from API responses (they return { rows: [...] })
+  const rows = (credits && Array.isArray(credits.rows)) ? credits.rows : [];
+  const pays = (payments && Array.isArray(payments.rows)) ? payments.rows : [];
   const tb=$('#tblCreditBody');
   if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; return; }
 
@@ -303,12 +305,13 @@ async function runReport(){
 
 
   // Tolerant rows to avoid crashing when any endpoint returns an error
-  const sRows = (s && Array.isArray(sRows)) ? sRows : [];
-  const eRows = (e && Array.isArray(eRows)) ? eRows : [];
-  const cRows = (c && Array.isArray(cRows)) ? cRows : [];
+  // Each API result has a `.rows` array; fallback to an empty array if missing
+  const sRows = (s && Array.isArray(s.rows)) ? s.rows : [];
+  const eRows = (e && Array.isArray(e.rows)) ? e.rows : [];
+  const cRows = (c && Array.isArray(c.rows)) ? c.rows : [];
   const oRows = (o && Array.isArray(o.rows)) ? o.rows : [];
-  const kRows = (k && Array.isArray(kRows)) ? kRows : [];
-  const pRows = (p && Array.isArray(pRows)) ? pRows : [];
+  const kRows = (k && Array.isArray(k.rows)) ? k.rows : [];
+  const pRows = (p && Array.isArray(p.rows)) ? p.rows : [];
   // Sales by method
   const sCash = sRows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
   const sTill = sRows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
@@ -341,7 +344,18 @@ const totalSales = sCash + sTill + sWith + sSend;
   const cashAvailable = morning + sCash + withdrawOut - expTot; // per request: cash morning + cash sales + withdrawal-out - cash expenses
 
   // Next day morning (for single-day reports)
-  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
+  // Normalize date inputs: convert DD/MM/YYYY to YYYY-MM-DD if needed
+  function normalizeDate(val){
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)){
+      const [dd, mm, yy] = val.split('/');
+      return `${yy}-${mm}-${dd}`;
+    }
+    return val;
+  }
+  let rawFrom = $('#repFrom').value || today();
+  let rawTo = $('#repTo').value || rawFrom;
+  const from = normalizeDate(rawFrom);
+  const to   = normalizeDate(rawTo);
   let nextMorning = 0;
   if (from===to){
     const d = new Date(from+'T00:00:00');
@@ -355,17 +369,15 @@ const totalSales = sCash + sTill + sWith + sSend;
   let manualCashOut = 0;
   if (from===to){
     const kc = await api('/api/cash/list?from='+from+'&to='+from);
+    const kcRows = (kc && Array.isArray(kc.rows)) ? kc.rows : [];
     manualCashOut = kcRows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
   }
 
   const computedCashOut = Math.max(0, cashAvailable - evening); // align with PDF & user: available - evening
   const cashOut = manualCashOut || computedCashOut;
 
-  // Remaining by channel (carry to next day)
-  const cashRemaining = evening; // align with user request
-  const tillRemaining = sTill - tillOut - expTill;
-  const withRemaining = sWith - withdrawOut - expWith;
-  const sendRemaining = sSend - sendOut - expSend;
+  // Remaining (carry to next day): difference between cash available and cash counted in the evening
+  const remainingCarry = cashAvailable - evening;
 
   // Build 6 sections
   const sections = [
@@ -374,8 +386,7 @@ const totalSales = sCash + sTill + sWith + sSend;
     { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
     { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
     { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
-    { title: '6) Remaining (carry to next day)', items: [['Cash remaining (evening)', cashRemaining], ['Till No remaining', tillRemaining], ['Withdrawal remaining', withRemaining], ['Send Money remaining', sendRemaining]] },
-  ,
+    { title: '6) Remaining (carry to next day)', items: [['Cash available in cashier - Cash evening', remainingCarry]] },
     { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
   ];
 
@@ -420,7 +431,8 @@ $('#btnRunReport')?.addEventListener('click', runReport);
   if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
   // Load existing till_out
   api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
-    const existing = kcRows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+    const rows = (kc && Array.isArray(kc.rows)) ? kc.rows : [];
+    const existing = rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
     if (existing>0) input.value = existing.toFixed(2);
   });
   btn.onclick = async ()=>{
