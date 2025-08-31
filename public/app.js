@@ -85,7 +85,8 @@ async function loadCredit(){
     api('/api/credits/list'),
     api('/api/credits/payments/list')
   ]);
-  const rows=creditsRows||[], pays=paymentsRows||[];
+  const rows=(credits && Array.isArray(credits.rows)) ? credits.rows : [];
+  const pays=(payments && Array.isArray(payments.rows)) ? payments.rows : [];
   const tb=$('#tblCreditBody');
   if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; return; }
 
@@ -303,13 +304,14 @@ async function runReport(){
 
 
   // Tolerant rows to avoid crashing when any endpoint returns an error
-  const sRows = (s && Array.isArray(sRows)) ? sRows : [];
-  const eRows = (e && Array.isArray(eRows)) ? eRows : [];
-  const cRows = (c && Array.isArray(cRows)) ? cRows : [];
+  const sRows = (s && Array.isArray(s.rows)) ? s.rows : [];
+  const eRows = (e && Array.isArray(e.rows)) ? e.rows : [];
+  const cRows = (c && Array.isArray(c.rows)) ? c.rows : [];
   const oRows = (o && Array.isArray(o.rows)) ? o.rows : [];
-  const kRows = (k && Array.isArray(kRows)) ? kRows : [];
-  const pRows = (p && Array.isArray(pRows)) ? pRows : [];
+  const kRows = (k && Array.isArray(k.rows)) ? k.rows : [];
+  const pRows = (p && Array.isArray(p.rows)) ? p.rows : [];
   // Sales by method
+
   const sCash = sRows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
   const sTill = sRows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
   const sWith = sRows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
