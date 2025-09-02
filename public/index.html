@@ -48,7 +48,8 @@
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabOrders" type="button"><i class="bi bi-bag-check"></i> Orders</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCash" type="button"><i class="bi bi-cash-stack"></i> Cash Count</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports" type="button"><i class="bi bi-graph-up"></i> Reports</button></li>
-      </ul>
+      
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabStaff" type="button"><i class="bi bi-person-badge"></i> Employees</button></li></ul>
 
       <div class="tab-content">
 
@@ -356,6 +357,180 @@ id="tabReports">
             </div>
           </div>
         </section>
+        <!-- ===== EMPLOYEES (Attendance + Purchases/Advances) — NEW ===== -->
+        <section class="tab-pane fade" id="tabStaff">
+          <div class="row g-4">
+
+            <!-- Left column: Forms -->
+            <div class="col-lg-4">
+              <!-- Attendance Form -->
+              <div class="card mb-4">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-door-open"></i> Attendance</div>
+                <div class="card-body">
+                  <form id="formAttendance" class="vstack gap-3">
+                    <div>
+                      <label class="form-label">Employee</label>
+                      <input class="form-control" list="dlEmployees" name="employee" placeholder="Select / type…" required>
+                      <datalist id="dlEmployees"></datalist>
+                    </div>
+                    <div class="row g-2">
+                      <div class="col">
+                        <label class="form-label">Date</label>
+                        <input class="form-control" type="date" name="date">
+                      </div>
+                      <div class="col">
+                        <label class="form-label">Action</label>
+                        <select class="form-select" name="action">
+                          <option value="check_in">Check-In</option>
+                          <option value="check_out">Check-Out</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="row g-2">
+                      <div class="col">
+                        <label class="form-label">Time</label>
+                        <input class="form-control" type="time" name="time">
+                      </div>
+                      <div class="col">
+                        <label class="form-label">Note</label>
+                        <input class="form-control" name="note" placeholder="Optional">
+                      </div>
+                    </div>
+                    <div class="d-grid">
+                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Employee Transactions (Purchases / Advances) -->
+              <div class="card">
+                <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+                  <span><i class="bi bi-wallet2"></i> Employee Transactions</span>
+                  <ul class="nav nav-pills" id="empTransTabs">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#empPurchTab" type="button">Purchases</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#empAdvTab" type="button">Advances</button></li>
+                  </ul>
+                </div>
+                <div class="card-body">
+                  <div class="tab-content">
+                    <div class="tab-pane fade show active" id="empPurchTab">
+                      <form id="formEmpPurchase" class="vstack gap-3">
+                        <div>
+                          <label class="form-label">Employee</label>
+                          <input class="form-control" list="dlEmployees" name="employee" required>
+                        </div>
+                        <div class="row g-2">
+                          <div class="col">
+                            <label class="form-label">Date</label>
+                            <input class="form-control" type="date" name="date">
+                          </div>
+                          <div class="col">
+                            <label class="form-label">Item</label>
+                            <input class="form-control" name="item" placeholder="e.g., Lunch">
+                          </div>
+                        </div>
+                        <div class="row g-2">
+                          <div class="col">
+                            <label class="form-label">Amount</label>
+                            <input class="form-control" type="number" min="0" step="0.01" name="amount" required>
+                          </div>
+                          <div class="col">
+                            <label class="form-label">Paid</label>
+                            <input class="form-control" type="number" min="0" step="0.01" name="paid" value="0">
+                          </div>
+                        </div>
+                        <div>
+                          <label class="form-label">Note</label>
+                          <textarea class="form-control" rows="2" name="note"></textarea>
+                        </div>
+                        <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Purchase</button></div>
+                      </form>
+                    </div>
+
+                    <div class="tab-pane fade" id="empAdvTab">
+                      <form id="formEmpAdvance" class="vstack gap-3">
+                        <div>
+                          <label class="form-label">Employee</label>
+                          <input class="form-control" list="dlEmployees" name="employee" required>
+                        </div>
+                        <div class="row g-2">
+                          <div class="col">
+                            <label class="form-label">Date</label>
+                            <input class="form-control" type="date" name="date">
+                          </div>
+                          <div class="col">
+                            <label class="form-label">Amount</label>
+                            <input class="form-control" type="number" min="0" step="0.01" name="amount" required>
+                          </div>
+                        </div>
+                        <div class="row g-2">
+                          <div class="col">
+                            <label class="form-label">Paid</label>
+                            <input class="form-control" type="number" min="0" step="0.01" name="paid" value="0">
+                          </div>
+                          <div class="col">
+                            <label class="form-label">Note</label>
+                            <input class="form-control" name="note" placeholder="Optional">
+                          </div>
+                        </div>
+                        <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Advance</button></div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right column: Lists -->
+            <div class="col-lg-8">
+              <!-- Attendance List -->
+              <div class="card mb-4">
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                  <span>Attendance</span>
+                  <input type="date" class="form-control form-control-sm ms-auto" id="attFrom">
+                  <input type="date" class="form-control form-control-sm" id="attTo">
+                  <input type="text" class="form-control form-control-sm" id="attEmployee" placeholder="Employee…" list="dlEmployees" style="max-width:180px">
+                  <button id="btnAttFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr><th>Date</th><th>Employee</th><th>Action</th><th>Time</th><th>Note</th></tr>
+                    </thead>
+                    <tbody id="tblAttendanceBody"><tr><td colspan="5" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Employee Purchases & Advances List -->
+              <div class="card">
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                  <span>Employee Purchases & Advances</span>
+                  <input type="date" class="form-control form-control-sm ms-auto" id="empFrom">
+                  <input type="date" class="form-control form-control-sm" id="empTo">
+                  <input type="text" class="form-control form-control-sm" id="empEmployee" placeholder="Employee…" list="dlEmployees" style="max-width:180px">
+                  <select id="empType" class="form-select form-select-sm" style="max-width:160px">
+                    <option value="">All</option>
+                    <option value="purchase">Purchases</option>
+                    <option value="advance">Advances</option>
+                  </select>
+                  <button id="btnEmpFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr><th>Date</th><th>Employee</th><th>Type</th><th>Item</th><th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Note</th></tr>
+                    </thead>
+                    <tbody id="tblEmpTransBody"><tr><td colspan="8" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
 
       </div>
     </div>

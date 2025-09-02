@@ -491,3 +491,131 @@ document.addEventListener('DOMContentLoaded', ()=>{
   toggleCashMode();
 });
 
+
+
+/* ===== EMPLOYEES MODULE — NEW ===== */
+
+async function loadEmployees(){
+  try{
+    const dl = document.getElementById('dlEmployees'); if(!dl) return;
+    const names = new Set();
+    // Try explicit employees list
+    const emp = await api('/api/employees/list');
+    (emp.rows||[]).forEach(r=>{ if((r.name||'').trim()) names.add(r.name.trim()); });
+    // Fallback: derive from attendance and transactions
+    if (names.size===0){
+      const [att, p, a] = await Promise.all([
+        api('/api/attendance/list'),
+        api('/api/emp_purchases/list'),
+        api('/api/emp_advances/list'),
+      ]);
+      [ ...(att.rows||[]), ...(p.rows||[]), ...(a.rows||[]) ].forEach(r=>{
+        const nm=(r.employee||'').trim(); if(nm) names.add(nm);
+      });
+    }
+    dl.innerHTML = Array.from(names).sort().map(n => `<option>${n}</option>`).join('');
+  }catch(e){ /* ignore */ }
+}
+}
+
+async function loadAttendance(){
+  const p=new URLSearchParams();
+  if($('#attFrom')?.value) p.set('from',$('#attFrom').value);
+  if($('#attTo')?.value)   p.set('to',$('#attTo').value);
+  if($('#attEmployee')?.value) p.set('employee',$('#attEmployee').value);
+
+  const {rows=[]}=await api('/api/attendance/list?'+p.toString());
+  const tb=$('#tblAttendanceBody'); if(!tb) return;
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="5" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
+      <td>${(r.dateISO||'').slice(0,10)}</td>
+      <td>${r.employee||''}</td>
+      <td class="text-capitalize">${(r.action||'').replace('_',' ')}</td>
+      <td>${r.time||''}</td>
+      <td>${r.note||''}</td>
+    </tr>`).join('');
+}
+
+async function loadEmpTrans(){
+  const p=new URLSearchParams();
+  if($('#empFrom')?.value) p.set('from',$('#empFrom').value);
+  if($('#empTo')?.value)   p.set('to',$('#empTo').value);
+  if($('#empEmployee')?.value) p.set('employee',$('#empEmployee').value);
+  const typeFilter = $('#empType')?.value || '';
+
+  const [purch, adv] = await Promise.all([
+    api('/api/emp_purchases/list?'+p.toString()),
+    api('/api/emp_advances/list?'+p.toString())
+  ]);
+  const rowsP = Array.isArray(purch.rows)?purch.rows:[];
+  const rowsA = Array.isArray(adv.rows)?adv.rows:[];
+  let all = [
+    ...rowsP.map(r=>({ ...r, _type:'purchase', item: r.item||'' })),
+    ...rowsA.map(r=>({ ...r, _type:'advance', item: '' })),
+  ];
+  if (typeFilter) all = all.filter(r=>r._type===typeFilter);
+  all.sort((a,b)=>String(a.dateISO).localeCompare(String(b.dateISO)));
+
+  const tb=$('#tblEmpTransBody'); if(!tb) return;
+  if(!all.length){ tb.innerHTML=`<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = all.map(r=>{
+    const amount = Number(r.amount||0);
+    const paid   = Number(r.paid||0);
+    const remaining = (amount - paid);
+    return `<tr>
+      <td>${(r.dateISO||'').slice(0,10)}</td>
+      <td>${r.employee||''}</td>
+      <td class="text-capitalize">${r._type}</td>
+      <td>${r.item||''}</td>
+      <td class="text-end">${amount.toFixed(2)}</td>
+      <td class="text-end">${paid.toFixed(2)}</td>
+      <td class="text-end fw-semibold">${remaining.toFixed(2)}</td>
+      <td>${r.note||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Forms
+document.getElementById('formAttendance')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  if(!(body.employee||'').trim()) return showToast('Employee required', false);
+  const res = await api('/api/attendance/add', { method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ e.target.reset(); showToast('Attendance saved'); loadAttendance(); } else showToast(res.error||'Failed', false);
+});
+
+document.getElementById('formEmpPurchase')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target); const body = Object.fromEntries(fd.entries());
+  if(!(body.employee||'').trim()) return showToast('Employee required', false);
+  if(!(Number(body.amount||0)>0))  return showToast('Enter valid amount', false);
+  const res = await api('/api/emp_purchases/add', { method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ e.target.reset(); showToast('Purchase saved'); loadEmpTrans(); } else showToast(res.error||'Failed', false);
+});
+
+document.getElementById('formEmpAdvance')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target); const body = Object.fromEntries(fd.entries());
+  if(!(body.employee||'').trim()) return showToast('Employee required', false);
+  if(!(Number(body.amount||0)>0))  return showToast('Enter valid amount', false);
+  const res = await api('/api/emp_advances/add', { method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ e.target.reset(); showToast('Advance saved'); loadEmpTrans(); } else showToast(res.error||'Failed', false);
+});
+
+// Filters
+document.getElementById('btnAttFilter')?.addEventListener('click', loadAttendance);
+document.getElementById('btnEmpFilter')?.addEventListener('click', loadEmpTrans);
+
+// Socket update for new types
+ioClient?.on?.('new-record', ({type})=>{
+  const active = document.querySelector('.tab-pane.active')?.id || '';
+  if (active==='tabStaff' && (type==='attendance' || type==='emp_purchases' || type==='emp_advances' || type==='employees')){
+    loadAttendance(); loadEmpTrans(); loadEmployees();
+  }
+});
+
+// Bootstrap: initial load
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadEmployees(); loadAttendance(); loadEmpTrans();
+});
