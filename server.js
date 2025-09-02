@@ -48,6 +48,10 @@ const FILES = {
   orders_status:    path.join(DATA_DIR, 'orders_status.jsonl'),
   orders_payments:  path.join(DATA_DIR, 'orders_payments.jsonl'),
   cash:             path.join(DATA_DIR, 'cash.jsonl'),
+  employees:        path.join(DATA_DIR, 'employees.jsonl'),
+  attendance:       path.join(DATA_DIR, 'attendance.jsonl'),
+  emp_purchases:    path.join(DATA_DIR, 'emp_purchases.jsonl'),
+  emp_advances:     path.join(DATA_DIR, 'emp_advances.jsonl'),
 };
 
 const ALL_TYPES = ['sales','expenses','credits','cash','orders','orders_status','orders_payments','credit_payments'];
@@ -128,6 +132,8 @@ function filterByQuery(rows, q) {
   const to   = q.to   ? parseToISO(q.to)   : null;
   const method   = q.method || q.payment || null;
   const customer = q.customer || q.name || null;
+  const employee = q.employee || null;
+
   const session  = q.session || null;
   return rows.filter(r=>{
     const d = r.dateISO || r.date || todayISO();
@@ -135,6 +141,7 @@ function filterByQuery(rows, q) {
     if (to && d > to) return false;
     if (method && (r.method !== method && r.payment !== method)) return false;
     if (customer && (r.customer || r.client || '').toLowerCase() !== (customer||'').toLowerCase()) return false;
+    if (employee && (String(r.employee||'').toLowerCase() !== String(employee).toLowerCase())) return false;
     if (session && r.session !== session) return false;
     return true;
   });
@@ -223,7 +230,29 @@ function sheetSpec(type, r) {
       headers: ['ID','DateISO','CreatedAt','UpdatedAt','Session','Total','Note','BreakdownJSON'],
       row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.session||'', normNum(r.total), r.note||'', JSON.stringify(r.breakdown||{})]
     };
-    default: return null;
+
+case 'employees': return {
+  name: tab('Employees'),
+  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Name','Phone','Note'],
+  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.name||'', r.phone||'', r.note||'']
+};
+case 'attendance': return {
+  name: tab('Attendance'),
+  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Action','Time','Note'],
+  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', r.action||'', r.time||'', r.note||'']
+};
+case 'emp_purchases': return {
+  name: tab('EmpPurchases'),
+  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Item','Amount','Paid','Note'],
+  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', r.item||'', normNum(r.amount), normNum(r.paid), r.note||'']
+};
+case 'emp_advances': return {
+  name: tab('EmpAdvances'),
+  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Amount','Paid','Note'],
+  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', normNum(r.amount), normNum(r.paid), r.note||'']
+};
+default: return null;
+
   }
 }
 
@@ -543,6 +572,37 @@ app.post('/api/expenses/add', upload.single('receipt'), async (req,res)=>{
 });
 
 // ===== Credits & Payments =====
+// ===== Employees (directory) — NEW =====
+app.post('/api/employees/add', handleAdd('employees', b=>({
+  name: b.name||'',
+  phone: b.phone||'',
+  note: b.note||'',
+})));
+
+// ===== Attendance — NEW =====
+app.post('/api/attendance/add', handleAdd('attendance', b=>{
+  const a = (b.action||'').toString().toLowerCase().replace('-', '_');
+  const action = (a.includes('out') ? 'check_out' : 'check_in');
+  return { employee:b.employee||'', action, time:b.time||'', note:b.note||'' };
+}));
+
+// ===== Employee Purchases — NEW =====
+app.post('/api/emp_purchases/add', handleAdd('emp_purchases', b=>({
+  employee:b.employee||'',
+  item:b.item||'',
+  amount:normNum(b.amount||0),
+  paid:normNum(b.paid||0),
+  note:b.note||'',
+})));
+
+// ===== Employee Advances — NEW =====
+app.post('/api/emp_advances/add', handleAdd('emp_advances', b=>({
+  employee:b.employee||'',
+  amount:normNum(b.amount||0),
+  paid:normNum(b.paid||0),
+  note:b.note||'',
+})));
+
 const addCredit = handleAdd('credits', b=>{
   const paid=normNum(b.paid||0), amount=normNum(b.amount||0);
   return { customer:b.customer||b.name||'', item:b.item||'', amount, paid, remaining:Math.max(0, amount-paid), note:b.note||'', paymentDateISO: b.paymentDate?parseToISO(b.paymentDate):'' };
