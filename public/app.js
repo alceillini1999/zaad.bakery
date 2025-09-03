@@ -5,157 +5,119 @@ const api = (p, opts={}) => fetch(p, Object.assign({headers:{'Content-Type':'app
 const today = () => new Date().toISOString().slice(0,10);
 const toast = new bootstrap.Toast($('#appToast'), { delay: 1600 });
 const showToast = (msg, ok=true) => {
-  const t = $('#appToast');
-  t.classList.toggle('text-bg-success', ok);
-  t.classList.toggle('text-bg-danger', !ok);
-  t.querySelector('.toast-body').innerHTML = msg;
-  toast.show();
+  const t=$('#appToast'); t.classList.toggle('text-bg-success', ok); t.classList.toggle('text-bg-danger', !ok);
+  t.querySelector('.toast-body').innerHTML=msg; toast.show();
 };
-const ioClient = io();
-ioClient.on('new-record', ({type}) => {
+const ioClient = io(); ioClient.on('new-record', ({type})=>{
   const active = document.querySelector('.tab-pane.active')?.id || '';
-  if (active === 'tabSales'    && (type === 'sales')) loadSales();
-  if (active === 'tabExpenses' && (type === 'expenses')) loadExpenses();
-  if (active === 'tabCredit'   && (type === 'credits' || type === 'credit_payments')) loadCredit();
-  if (active === 'tabOrders'   && (type === 'orders' || type === 'orders_status' || type === 'orders_payments' || type === 'sales')) loadOrders();
-  if (active === 'tabCash'     && (type === 'cash')) loadCash();
-  if (active === 'tabEmployees' && (type === 'employees')) loadEmployees();
-  if (active === 'tabReconciliation' && (type === 'attendance' || type === 'emp_purchases' || type === 'emp_advances')) {
-    if (type === 'attendance') loadAttendance();
-    else loadEmpTrans();
-  }
+  if (active==='tabSales'   && (type==='sales')) loadSales();
+  if (active==='tabExpenses'&& (type==='expenses')) loadExpenses();
+  if (active==='tabCredit'  && (type==='credits' || type==='credit_payments')) loadCredit();
+  if (active==='tabOrders'  && (type==='orders' || type==='orders_status' || type==='orders_payments' || type==='sales')) loadOrders();
+  if (active==='tabCash'    && (type==='cash')) loadCash();
 });
-$('#themeSwitch')?.addEventListener('change', e => document.documentElement.classList.toggle('dark', e.target.checked));
-$('#btnShare')?.addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(location.href);
-    showToast('<i class="bi bi-clipboard-check"></i> Link copied');
-  } catch {
-    showToast('Copy failed', false);
-  }
-});
+$('#themeSwitch')?.addEventListener('change',e=>document.documentElement.classList.toggle('dark', e.target.checked));
+$('#btnShare')?.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(location.href); showToast('<i class="bi bi-clipboard-check"></i> Link copied'); }catch{ showToast('Copy failed',false);} });
 
-function badgeFor(method) {
+function badgeFor(method){
   if (!method) return '';
-  const m = (method + '').toLowerCase();
-  if (m.includes('till'))      return `<span class="badge badge-method badge-Till">Till No</span>`;
-  if (m.includes('withdraw'))  return `<span class="badge badge-method badge-Withdrawal">Withdrawal</span>`;
-  if (m.includes('send'))      return `<span class="badge badge-method badge-Send">Send</span>`;
+  const m=(method+'').toLowerCase();
+  if (m.includes('till')) return `<span class="badge badge-method badge-Till">Till No</span>`;
+  if (m.includes('withdraw')) return `<span class="badge badge-method badge-Withdrawal">Withdrawal</span>`;
+  if (m.includes('send')) return `<span class="badge badge-method badge-Send">Send</span>`;
   return `<span class="badge badge-method badge-Cash">Cash</span>`;
 }
 
 /* ---------- SALES (بدون Product/Qty/Unit) ---------- */
-async function loadSales() {
-  const p = new URLSearchParams();
-  if ($('#salesFrom').value)   p.set('from', $('#salesFrom').value);
-  if ($('#salesTo').value)     p.set('to', $('#salesTo').value);
-  if ($('#salesMethod').value) p.set('method', $('#salesMethod').value);
-  const {rows=[]} = await api('/api/sales/list?' + p.toString());
-  const tb = $('#tblSalesBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r => `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
+async function loadSales(){
+  const p=new URLSearchParams();
+  if($('#salesFrom').value) p.set('from',$('#salesFrom').value);
+  if($('#salesTo').value)   p.set('to',$('#salesTo').value);
+  if($('#salesMethod').value) p.set('method',$('#salesMethod').value);
+  const {rows=[]}=await api('/api/sales/list?'+p.toString());
+  const tb=$('#tblSalesBody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
+      <td>${(r.dateISO||'').slice(0,10)}</td>
       <td class="text-end fw-semibold">${Number(r.amount||0).toFixed(2)}</td>
       <td>${badgeFor(r.method)}</td>
-      <td>${r.note || ''}</td>
+      <td>${r.note||''}</td>
     </tr>`).join('');
 }
 $('#btnSalesFilter')?.addEventListener('click', loadSales);
-$('#btnSalesExport')?.addEventListener('click', e => {
-  e.target.href = `/api/sales/export?from=${$('#salesFrom').value || ''}&to=${$('#salesTo').value || ''}&method=${$('#salesMethod').value || ''}`;
+$('#btnSalesExport')?.addEventListener('click', (e)=>{
+  e.target.href=`/api/sales/export?from=${$('#salesFrom').value||''}&to=${$('#salesTo').value||''}&method=${$('#salesMethod').value||''}`;
 });
-$('#formSale')?.addEventListener('submit', async e => {
+$('#formSale')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.amount = Number(body.amount || 0);
-  if (!(body.amount > 0)) return showToast('Enter amount', false);
-  const res = await api('/api/sales/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Sale saved');
-    loadSales();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
+  const fd=new FormData(e.target); const body=Object.fromEntries(fd.entries());
+  body.amount = Number(body.amount||0);
+  if(!(body.amount>0)) return showToast('Enter amount', false);
+  const res=await api('/api/sales/add',{method:'POST',body:JSON.stringify(body)});
+  if(res.ok){ e.target.reset(); showToast('Sale saved'); loadSales(); } else showToast(res.error||'Failed',false);
 });
 
 /* ---------- EXPENSES (مع صورة) ---------- */
-async function loadExpenses() {
-  const {rows=[]} = await api('/api/expenses/list');
-  const tb = $('#tblExpensesBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r => `<tr>
-    <td>${(r.dateISO || '').slice(0,10)}</td>
-    <td>${r.item || ''}</td>
+async function loadExpenses(){
+  const {rows=[]}=await api('/api/expenses/list');
+  const tb=$('#tblExpensesBody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
+    <td>${(r.dateISO||'').slice(0,10)}</td>
+    <td>${r.item||''}</td>
     <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
     <td>${badgeFor(r.method)}</td>
-    <td>${r.receiptPath ? `<a href="${r.receiptPath}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>` : ''}</td>
-    <td>${r.note || ''}</td>
+    <td>${r.receiptPath?`<a href="${r.receiptPath}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>`:''}</td>
+    <td>${r.note||''}</td>
   </tr>`).join('');
 }
-$('#formExpense')?.addEventListener('submit', async e => {
+$('#formExpense')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const form = e.target;
   const formData = new FormData(form); // يرسل ملف receipt إن وجد
-  const res = await fetch('/api/expenses/add', {method:'POST', body: formData}).then(r => r.json());
-  if (res.ok) {
-    form.reset();
-    showToast('Expense saved');
-    loadExpenses();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
+  const res = await fetch('/api/expenses/add',{method:'POST', body: formData}).then(r=>r.json());
+  if(res.ok){ form.reset(); showToast('Expense saved'); loadExpenses(); } else showToast(res.error||'Failed',false);
 });
 
 /* ---------- CREDIT + PAYMENTS ---------- */
-async function loadCredit() {
+async function loadCredit(){
   const [credits, payments] = await Promise.all([
     api('/api/credits/list'),
     api('/api/credits/payments/list')
   ]);
+  // Safely extract rows from API responses (they return { rows: [...] })
   const rows = (credits && Array.isArray(credits.rows)) ? credits.rows : [];
   const pays = (payments && Array.isArray(payments.rows)) ? payments.rows : [];
-  const tb = $('#tblCreditBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
+  const tb=$('#tblCreditBody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="text-secondary p-4">No data.</td></tr>`; return; }
+
   // جمع المدفوعات لكل عميل
   const paysBy = {};
-  pays.forEach(p => {
-    const k = (p.customer || '').trim();
-    paysBy[k] = (paysBy[k] || 0) + (+p.paid || 0);
-  });
-  tb.innerHTML = rows.map(r => {
-    const name = r.customer || '';
-    const paidNow = (+r.paid || 0) + (paysBy[name] || 0);
-    const remaining = Math.max(0, (+r.amount || 0) - paidNow);
+  pays.forEach(p=>{ const k=(p.customer||'').trim(); paysBy[k]=(paysBy[k]||0)+(+p.paid||0); });
+
+  tb.innerHTML = rows.map(r=>{
+    const name = r.customer||'';
+    const paidNow = (+r.paid||0) + (paysBy[name]||0);
+    const remaining = Math.max(0,(+r.amount||0)-paidNow);
     return `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
+      <td>${(r.dateISO||'').slice(0,10)}</td>
       <td>${name}</td>
-      <td>${r.item || ''}</td>
+      <td>${r.item||''}</td>
       <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
       <td class="text-end">${Number(paidNow).toFixed(2)}</td>
       <td class="text-end fw-semibold">${Number(remaining).toFixed(2)}</td>
       <td><button class="btn btn-sm btn-outline-primary btnCrPay" data-name="${encodeURIComponent(name)}">Pay</button></td>
     </tr>`;
   }).join('');
+
   // زر دفع من الجدول
-  $$('.btnCrPay').forEach(b => {
-    b.addEventListener('click', () => {
-      const name = decodeURIComponent(b.dataset.name || '');
-      const f = $('#formPay');
-      f.customer.value = name;
+  $$('.btnCrPay').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const name=decodeURIComponent(b.dataset.name||'');
+      const f=$('#formPay'); f.customer.value=name;
       // Ensure payment method field exists in the Credit Pay modal
       let _m = f.querySelector('[name="method"]');
-      if (!_m) {
+      if(!_m){
         const block = document.createElement('div');
         block.innerHTML = `<div>
           <label class="form-label">Payment Method</label>
@@ -167,297 +129,365 @@ async function loadCredit() {
           </select>
         </div>`;
         const submitBtn = f.querySelector('button[type="submit"]');
-        f.insertBefore(block.firstElementChild, submitBtn);
+        (submitBtn?.parentElement || f).insertBefore(block.firstElementChild, submitBtn || null);
+        _m = f.querySelector('[name="method"]');
       }
-      const modal = new bootstrap.Modal($('#payModal'));
-      modal.show();
+      _m.value = 'Cash';
+
+      new bootstrap.Modal($('#payModal')).show();
     });
   });
 }
-$('#formCredit')?.addEventListener('submit', async e => {
+$('#formCredit')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.amount = Number(body.amount || 0);
-  body.paid = Number(body.paid || 0);
-  if (!(body.amount > 0)) return showToast('Enter amount', false);
-  const res = await api('/api/credits/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Credit saved');
-    loadCredit();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
+  const body=Object.fromEntries(new FormData(e.target).entries());
+  const res=await api('/api/credits/add',{method:'POST',body:JSON.stringify(body)});
+  if(res.ok){ e.target.reset(); showToast('Credit saved'); loadCredit(); } else showToast(res.error||'Failed',false);
 });
-$('#btnCrFilter')?.addEventListener('click', () => {
-  $('#crFrom').value && $('#crTo').value; // (Filters handled within loadCredit by reading inputs)
-  loadCredit();
+$('#formPay')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const body=Object.fromEntries(new FormData(e.target).entries());
+  const res=await api('/api/credits/pay',{method:'POST',body:JSON.stringify(body)});
+  if(res.ok){ e.target.reset(); bootstrap.Modal.getInstance($('#payModal'))?.hide(); showToast('Payment recorded'); loadCredit(); loadSales();
+    document.querySelector('[data-bs-target="#tabSales"]')?.click(); } else showToast(res.error||'Failed',false);
 });
-$('#btnCrFilter')?.addEventListener('click', loadCredit);
-// (Note: Credit filter fields are handled in loadCredit or could be implemented similarly to loadSales)
 
-/* ---------- ORDERS ---------- */
-async function loadOrders() {
-  const p = new URLSearchParams();
-  if ($('#orFrom').value)        p.set('from', $('#orFrom').value);
-  if ($('#orTo').value)          p.set('to', $('#orTo').value);
-  if ($('#orStatusFilter').value) p.set('status', $('#orStatusFilter').value);
-  const {rows=[]} = await api('/api/orders/list?' + p.toString());
-  const tb = $('#tblOrdersBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r => `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
-      <td>${r.phone || ''}</td>
-      <td>${r.item || ''}</td>
+/* ---------- ORDERS + STATUS + PAY + INVOICE ---------- */
+const ORDER_FLOW=['Pending','In-Progress','Done','Delivered'];
+async function loadOrders(){
+  const {rows=[]}=await api('/api/orders/list');
+  const statusFilter = $('#orStatusFilter').value;
+  let list = rows;
+  if (statusFilter) list = list.filter(r=> (r.status||'Pending')===statusFilter);
+  const tb=$('#tblOrdersBody');
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`; return;}
+
+  tb.innerHTML = list.map(r=>{
+    const next = ORDER_FLOW[(ORDER_FLOW.indexOf(r.status||'Pending')+1)%ORDER_FLOW.length];
+    const q = new URLSearchParams({ phone: r.phone||'', item: r.item||'', price: r.amount||0 });
+    return `<tr data-id="${r.id}" data-remaining="${Number(r.remaining||0).toFixed(2)}" data-phone="${r.phone||''}" data-item="${r.item||''}">
+      <td>${(r.dateISO||'').slice(0,10)}</td>
+      <td>${r.phone||''}</td>
+      <td>${r.item||''}</td>
       <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
       <td class="text-end">${Number(r.paid||0).toFixed(2)}</td>
       <td class="text-end fw-semibold">${Number(r.remaining||0).toFixed(2)}</td>
-      <td>${r.status || 'Pending'}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary btnOrderPay" data-id="${r.id}" data-phone="${r.phone||''}" data-item="${r.item||''}" data-remaining="${Number(r.remaining||0).toFixed(2)}">Pay</button>
+      <td><span class="badge text-bg-${r.status==='Delivered'?'success':r.status==='Done'?'primary':r.status==='In-Progress'?'warning text-dark':'secondary'}">${r.status||'Pending'}</span></td>
+      <td class="d-flex gap-1 flex-wrap">
+        <button class="btn btn-sm btn-outline-secondary btnNext">Next → ${next}</button>
+        <button class="btn btn-sm btn-outline-primary btnPay">Pay</button>
+        <a class="btn btn-sm btn-outline-dark" href="/invoice.html?${q.toString()}" target="_blank"><i class="bi bi-whatsapp"></i> Invoice</a>
       </td>
-    </tr>`).join('');
-  // Attach pay button event
-  $$('.btnOrderPay').forEach(btn => {
-    btn.addEventListener('click', () => {
-      $('#opId').value = btn.dataset.id || '';
-      $('#opPhone').value = btn.dataset.phone || '';
-      $('#opItem').value = btn.dataset.item || '';
-      $('#opRemaining').value = btn.dataset.remaining || '0.00';
-      const modal = new bootstrap.Modal($('#orderPayModal'));
-      modal.show();
+    </tr>`;
+  }).join('');
+
+  // Next status
+  $$('#tblOrdersBody .btnNext').forEach(btn=>{
+    btn.addEventListener('click', async (ev)=>{
+      const tr=ev.target.closest('tr'); const id=tr?.dataset.id; if(!id) return;
+      const curr=tr.querySelector('td:nth-child(7) .badge')?.innerText||'Pending';
+      const next=ORDER_FLOW[(ORDER_FLOW.indexOf(curr)+1)%ORDER_FLOW.length];
+      const res=await api('/api/orders/status',{method:'POST', body:JSON.stringify({id, status: next})});
+      if(res.ok){ showToast('Status updated'); loadOrders(); } else showToast(res.error||'Failed',false);
+    });
+  });
+
+  // Pay button -> modal
+  $$('#tblOrdersBody .btnPay').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      const tr=ev.target.closest('tr');
+      $('#opId').value = tr.dataset.id;
+      $('#opPhone').value = tr.dataset.phone || '';
+      $('#opItem').value = tr.dataset.item || '';
+      $('#opRemaining').value = tr.dataset.remaining || '0.00';
+      $('#opAmount').value = tr.dataset.remaining || '0.00';
+      $('#opMethod').value = 'Cash';
+      new bootstrap.Modal($('#orderPayModal')).show();
     });
   });
 }
-$('#formOrder')?.addEventListener('submit', async e => {
+$('#orStatusFilter')?.addEventListener('change', loadOrders);
+
+// submit order
+$('#formOrder')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.amount = Number(body.amount || 0);
-  body.paid = Number(body.paid || 0);
-  if (!(body.amount > 0)) return showToast('Enter amount', false);
-  const res = await api('/api/orders/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Order saved');
-    loadOrders();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
-});
-$('#btnOrFilter')?.addEventListener('click', loadOrders);
-$('#formOrderPay')?.addEventListener('submit', async e => {
-  e.preventDefault();
-  const id = $('#opId').value;
-  const amount = Number($('#opAmount').value || 0);
-  const method = $('#opMethod').value;
-  if (!id || !(amount > 0)) return showToast('Enter valid amount', false);
-  const res = await api('/api/orders/pay', {method:'POST', body: JSON.stringify({id, amount, method})});
-  if (res.ok) {
-    showToast('Order payment saved');
-    loadOrders();
-    bootstrap.Modal.getInstance($('#orderPayModal'))?.hide();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
+  const body=Object.fromEntries(new FormData(e.target).entries());
+  const res=await api('/api/orders/add',{method:'POST',body:JSON.stringify(body)});
+  if(res.ok){ e.target.reset(); showToast('Order saved'); loadOrders(); } else showToast(res.error||'Failed',false);
 });
 
-/* ---------- CASH ---------- */
-async function loadCash() {
-  const {rows=[]} = await api('/api/cash/list');
-  const tb = $('#tblCashBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r => `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
-      <td>${r.session || ''}</td>
-      <td class="text-end fw-semibold">${Number(r.total||0).toFixed(2)}</td>
-      <td>${r.note || ''}</td>
-    </tr>`).join('');
+// order pay submit
+$('#formOrderPay')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const id=$('#opId').value, remain=parseFloat($('#opRemaining').value||'0'), amount=parseFloat($('#opAmount').value||'0');
+  if(amount>remain){ return showToast('Amount exceeds remaining', false); }
+  const method=$('#opMethod').value;
+  const res=await api('/api/orders/pay',{method:'POST', body:JSON.stringify({id, amount, method})});
+  if(res.ok){ bootstrap.Modal.getInstance($('#orderPayModal'))?.hide(); showToast('Order payment saved'); loadOrders(); loadSales();
+  document.querySelector('[data-bs-target="#tabSales"]')?.click(); } else showToast(res.error||'Failed',false);
+});
+
+/* ---------- CASH COUNT ---------- */
+const DEFAULT_DENOMS=[1000,500,200,100,50,40,20,10,5,1];
+function loadDenoms(){
+  const wrap = $('#denoms'); wrap.innerHTML='';
+  DEFAULT_DENOMS.forEach(v=>{
+    const id='d_'+v;
+    wrap.insertAdjacentHTML('beforeend',`
+      <div class="col-6 col-md-4">
+        <label class="form-label small mb-1">${v}</label>
+        <div class="input-group"><span class="input-group-text">Qty</span><input type="number" min="0" step="1" value="0" class="form-control" id="${id}"></div>
+      </div>
+    `);
+    $('#'+id).addEventListener('input', updateCashTotal);
+  });
+  updateCashTotal();
 }
-$('#formCash')?.addEventListener('submit', async e => {
+function updateCashTotal(){
+  let total=0; $$('input[id^="d_"]').forEach(i=>{
+    const denom=parseInt(i.id.split('_')[1],10), qty=parseInt(i.value||'0',10);
+    total += denom*qty;
+  });
+  $('#cashTotal').textContent=total.toFixed(2);
+}
+async function loadCash(){
+  const {rows=[]}=await api('/api/cash/list');
+  const tb=$('#tblCashBody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
+    <td>${(r.dateISO||'').slice(0,10)}</td>
+    <td class="text-capitalize">${r.session||''}</td>
+    <td class="text-end fw-semibold">${Number(r.total||0).toFixed(2)}</td>
+    <td>${r.note||''}</td>
+  </tr>`).join('');
+}
+$('#formCash')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.breakdown = {}; // (We would gather breakdown details if implemented)
-  body.total = Number($('#cashTotal').textContent || 0);
-  const res = await api('/api/cash/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    $('#cashTotal').textContent = '0.00';
-    showToast('Cash count saved');
-    loadCash();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
+  const fd=new FormData(e.target);
+  const body={ breakdown:{} };
+  body.session = fd.get('session')||'morning';
+  body.note = $('#cashNote').value||'';
+  $$('input[id^="d_"]').forEach(i=>{
+    const denom=parseInt(i.id.split('_')[1],10), qty=parseInt(i.value||'0',10); body.breakdown[denom]=qty;
+  });
+  body.total=parseFloat($('#cashTotal').textContent||'0');
+  const res=await api('/api/cash/add',{method:'POST',body:JSON.stringify(body)});
+  if(res.ok){ showToast('Cash saved'); loadCash(); } else showToast(res.error||'Failed',false);
 });
 
-/* ---------- REPORTS (Charts) ---------- */
-// (The code for generating charts and updating report cards goes here, omitted for brevity)
-
-/* ---------- EMPLOYEES (Directory) ---------- */
-async function loadEmployees() {
-  const {rows=[]} = await api('/api/employees/list');
-  const tb = $('#tblEmployeesBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`;
-    $('#dlEmployees')?.replaceChildren();
-    return;
-  }
-  tb.innerHTML = rows.map(r => `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
-      <td>${r.name || ''}</td>
-      <td>${r.phone || ''}</td>
-      <td>${r.note || ''}</td>
-    </tr>`).join('');
-  const dl = $('#dlEmployees');
-  if (dl) dl.innerHTML = rows.map(r => `<option value="${r.name}"></option>`).join('');
+/* ---------- REPORTS + CHART ---------- */
+let salesByMethodChart;
+function drawSalesByMethod({cash, till, withdrawal, send}) {
+  const ctx = document.getElementById('salesByMethodChart'); if(!ctx) return;
+  const data=[cash,till,withdrawal,send].map(x=>+x||0);
+  if(salesByMethodChart) salesByMethodChart.destroy();
+  salesByMethodChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:['Cash','Till No','Withdrawal','Send Money'], datasets:[{ label:'Sales (KES)', data }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
 }
 
-/* ---------- ATTENDANCE ---------- */
-async function loadAttendance() {
-  const p = new URLSearchParams();
-  if ($('#attFrom').value) p.set('from', $('#attFrom').value);
-  if ($('#attTo').value)   p.set('to', $('#attTo').value);
-  if ($('#attEmployee').value) p.set('employee', $('#attEmployee').value);
-  const {rows=[]} = await api('/api/attendance/list?' + p.toString());
-  const tb = $('#tblAttendanceBody');
-  if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="5" class="text-secondary p-4">No data.</td></tr>`;
-    return;
+async function runReport(){
+  const q=new URLSearchParams();
+  if($('#repFrom').value) q.set('from',$('#repFrom').value);
+  if($('#repTo').value)   q.set('to',$('#repTo').value);
+
+  const [s,e,c,o,k,p] = await Promise.all([
+    api('/api/sales/list?'+q.toString()),
+    api('/api/expenses/list?'+q.toString()),
+    api('/api/credits/list?'+q.toString()),
+    api('/api/orders/list?'+q.toString()),
+    api('/api/cash/list?'+q.toString()),
+    api('/api/credits/payments/list?'+q.toString()),
+  ]);
+
+
+
+  // Tolerant rows to avoid crashing when any endpoint returns an error
+  // Each API result has a `.rows` array; fallback to an empty array if missing
+  const sRows = (s && Array.isArray(s.rows)) ? s.rows : [];
+  const eRows = (e && Array.isArray(e.rows)) ? e.rows : [];
+  const cRows = (c && Array.isArray(c.rows)) ? c.rows : [];
+  const oRows = (o && Array.isArray(o.rows)) ? o.rows : [];
+  const kRows = (k && Array.isArray(k.rows)) ? k.rows : [];
+  const pRows = (p && Array.isArray(p.rows)) ? p.rows : [];
+  // Sales by method
+  const sCash = sRows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
+  const sTill = sRows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
+  const sWith = sRows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
+  const sSend = sRows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+const totalSales = sCash + sTill + sWith + sSend;
+
+  // Expenses breakdown
+  const expTot  = eRows.reduce((a,r)=>a+(+r.amount||0),0);
+  const expCash = eRows.reduce((a,r)=>a+(/cash/i.test(r.method)?+r.amount:0),0);
+  const expTill = eRows.reduce((a,r)=>a+(/till/i.test(r.method)?+r.amount:0),0);
+  const expWith = eRows.reduce((a,r)=>a+(/withdraw/i.test(r.method)?+r.amount:0),0);
+  const expSend = eRows.reduce((a,r)=>a+(/send/i.test(r.method)?+r.amount:0),0);
+
+  // Credit outstanding
+  const crGross = cRows.reduce((a,r)=>a+((+r.amount||0)-(+r.paid||0)),0);
+  const crPays  = pRows.reduce((a,r)=>a+(+r.paid||0),0);
+  const crOutstanding = crGross - crPays;
+
+  // Cash counts
+  const morning = kRows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+  const evening = kRows.filter(x=>x.session==='evening').reduce((a,r)=>a+(+r.total||0),0);
+
+  // Outs
+  const withdrawOut = kRows.filter(x=>x.session==='withdraw_out' || x.session==='eod').reduce((a,r)=>a+(+r.total||0),0);
+  const tillOut     = kRows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+  const sendOut     = kRows.filter(x=>x.session==='send_out').reduce((a,r)=>a+(+r.total||0),0);
+
+  // Section 4: Cash available (correct formula)
+  const cashAvailable = morning + sCash + withdrawOut - expTot; // per request: cash morning + cash sales + withdrawal-out - cash expenses
+
+  // Next day morning (for single-day reports)
+  // Normalize date inputs: convert DD/MM/YYYY to YYYY-MM-DD if needed
+  function normalizeDate(val){
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)){
+      const [dd, mm, yy] = val.split('/');
+      return `${yy}-${mm}-${dd}`;
+    }
+    return val;
   }
-  tb.innerHTML = rows.map(r => {
-    const actionText = (r.action || '').toLowerCase().includes('out') ? 'Check-Out' : 'Check-In';
-    return `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
-      <td>${r.employee || ''}</td>
-      <td>${actionText}</td>
-      <td>${r.time || ''}</td>
-      <td>${r.note || ''}</td>
-    </tr>`;
-  }).join('');
+  let rawFrom = $('#repFrom').value || today();
+  let rawTo   = $('#repTo').value || rawFrom;
+  const from = normalizeDate(rawFrom);
+  const to   = normalizeDate(rawTo);
+  // Compute next day's morning based on the day after the 'to' date (or 'from' if 'to' is empty).
+  let nextMorning = 0;
+  {
+    const baseDate = to || from;
+    const d = new Date(baseDate + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    // Format date in YYYY-MM-DD for local timezone (avoid UTC offset)
+    const next = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    const kn = await api('/api/cash/list?from='+next+'&to='+next);
+    const knRows = (kn && Array.isArray(kn.rows)) ? kn.rows : [];
+    nextMorning = knRows.filter(x=>x.session==='morning').reduce((a,r)=>a+(+r.total||0),0);
+  }
+
+  // Manual cash_out for selected day (session='cash_out')
+  let manualCashOut = 0;
+  if (from===to){
+    const kc = await api('/api/cash/list?from='+from+'&to='+from);
+    const kcRows = (kc && Array.isArray(kc.rows)) ? kc.rows : [];
+    manualCashOut = kcRows.filter(x=>x.session==='cash_out').reduce((a,r)=>a+(+r.total||0),0);
+  }
+
+  // Compute Cash Out based purely on cash difference (cash evening minus next morning)
+  const computedCashOut = Math.max(0, evening - nextMorning);
+  const cashOut = computedCashOut;
+
+  // Remaining (carry to next day): difference between cash available and cash counted in the evening
+  const remainingCarry = cashAvailable - evening;
+
+  // Build 6 sections
+  const sections = [
+    { title: '1) Expenses', items: [['Expenses', expTot]] },
+    { title: '2) Sales by Method', items: [['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith]] },
+    { title: '3) Cash Counts', items: [['Cash Morning', morning], ['Cash Evening', evening]] },
+    { title: '4) Cash available in cashier', items: [['Cash available (computed)', cashAvailable]] },
+    { title: '5) Outs', items: [['Cash Out (available - evening)', cashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut]] },
+    { title: '6) Remaining (carry to next day)', items: [['Cash available in cashier - Cash evening', remainingCarry]] },
+    { title: '7) Total Sales', items: [['Total Sales', totalSales]] }
+  ];
+
+  $('#repCards').innerHTML = sections.map(sec => `
+    <div class="col-12"><h5 class="mt-3 mb-2">${sec.title}</h5></div>
+    ${sec.items.map(([t,v])=>`
+      <div class="col-6 col-md-4 col-xl-3">
+        <div class="card mini-stat"><div class="card-body">
+          <div class="text-muted">${t}</div>
+          <div class="fs-4 fw-semibold mt-1">${(+v).toFixed(2)}</div>
+        </div></div>
+      </div>
+    `).join('')}
+  `).join('');
+
+  drawSalesByMethod({cash:sCash,till:sTill,withdrawal:sWith,send:sSend});
+  $('#btnPDF').href = `/api/report/daily-pdf?from=${from}&to=${to}`;
+
+  // Prefill & Save manual Cash Out UI
+  }
+
+$('#btnRunReport')?.addEventListener('click', runReport);
+
+/* ---------- Boot ---------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // default dates
+  ['salesFrom','salesTo','repFrom','repTo'].forEach(id=>{ if($('#'+id)) $('#'+id).value=today(); });
+  loadDenoms();
+
+  // load lists initially
+  loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
+});
+$('#btnRunReport')?.addEventListener('click', runReport);
+
+
+// Till No Out manual box handlers (Reports)
+(function(){
+  const input = $('#repTillOutInput'), btn = $('#btnSaveTillOut');
+  if (!input || !btn) return;
+  const from=$('#repFrom').value||today(), to=$('#repTo').value||from;
+  // Only enabled for single day
+  if (from!==to){ input.value=''; input.disabled=true; btn.disabled=true; input.placeholder='اختر يوم واحد'; return; }
+  // Load existing till_out
+  api('/api/cash/list?from='+from+'&to='+from).then(kc=>{
+    const rows = (kc && Array.isArray(kc.rows)) ? kc.rows : [];
+    const existing = rows.filter(x=>x.session==='till_out').reduce((a,r)=>a+(+r.total||0),0);
+    if (existing>0) input.value = existing.toFixed(2);
+  });
+  btn.onclick = async ()=>{
+    const val = +($('#repTillOutInput').value||0);
+    if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+    await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: from, session:'till_out', total: val, note:'report till out' }) });
+    showToast('Till Out saved'); runReport();
+  };
+})();
+
+
+
+// Quick Outs (Manual) on Cash tab
+$('#btnCashOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#cashOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'cash_out', total: val, note:'cash tab manual' }) });
+  showToast('Cash Out saved'); $('#cashOutInput').value=''; runReport?.(); loadCash?.(); 
+});
+$('#btnTillOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#tillOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'till_out', total: val, note:'cash tab manual' }) });
+  showToast('Till No Out saved'); $('#tillOutInput').value=''; runReport?.(); loadCash?.();
+});
+$('#btnSendOutSave')?.addEventListener('click', async ()=>{
+  const val = +($('#sendOutInput').value||0); if (!(val>=0)) return showToast('أدخل رقم صالح', false);
+  await api('/api/cash/add',{ method:'POST', body: JSON.stringify({ date: today(), session:'send_out', total: val, note:'cash tab manual' }) });
+  showToast('Send Money Out saved'); $('#sendOutInput').value=''; runReport?.(); loadCash?.();
+});
+
+// --- Manual Amount mode for Till/Send on Cash tab ---
+function updateCashTotalManual(){
+  const v = parseFloat($('#manualOut')?.value || '0') || 0;
+  $('#cashTotal').textContent = v.toFixed(2);
 }
-
-/* ---------- EMPLOYEE PURCHASES & ADVANCES ---------- */
-async function loadEmpTrans() {
-  const p = new URLSearchParams();
-  if ($('#empFrom').value) p.set('from', $('#empFrom').value);
-  if ($('#empTo').value)   p.set('to', $('#empTo').value);
-  if ($('#empEmployee').value) p.set('employee', $('#empEmployee').value);
-  const typeFilter = $('#empType').value;
-  let combined = [];
-  if (typeFilter === 'purchase') {
-    const res = await api('/api/emp_purchases/list?' + p.toString());
-    const rows = (res && Array.isArray(res.rows)) ? res.rows : [];
-    combined = rows.map(r => Object.assign({}, r, {__type: 'purchase'}));
-  } else if (typeFilter === 'advance') {
-    const res = await api('/api/emp_advances/list?' + p.toString());
-    const rows = (res && Array.isArray(res.rows)) ? res.rows : [];
-    combined = rows.map(r => Object.assign({}, r, {__type: 'advance'}));
+function toggleCashMode(){
+  const s = document.querySelector('input[name="session"]:checked')?.value || 'morning';
+  const denoms = $('#denoms'), man = $('#manualOutWrap');
+  if (!denoms || !man) return;
+  if (s==='till_out' || s==='send_out'){
+    denoms.classList.add('d-none'); man.classList.remove('d-none');
+    updateCashTotalManual();
   } else {
-    const [resP, resA] = await Promise.all([
-      api('/api/emp_purchases/list?' + p.toString()),
-      api('/api/emp_advances/list?' + p.toString())
-    ]);
-    const purRows = (resP && Array.isArray(resP.rows)) ? resP.rows : [];
-    const advRows = (resA && Array.isArray(resA.rows)) ? resA.rows : [];
-    combined = purRows.map(r => Object.assign({}, r, {__type: 'purchase'}))
-               .concat(advRows.map(r => Object.assign({}, r, {__type: 'advance'})));
-    combined.sort((a, b) => (b.dateISO || '').localeCompare(a.dateISO || '')); // sort by date descending
+    man.classList.add('d-none'); denoms.classList.remove('d-none');
+    updateCashTotal();
   }
-  const tb = $('#tblEmpTransBody');
-  if (!combined.length) {
-    tb.innerHTML = `<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`;
-    return;
-  }
-  tb.innerHTML = combined.map(r => {
-    const type = r.__type === 'purchase' ? 'Purchase' : 'Advance';
-    const remaining = Math.max(0, (Number(r.amount) || 0) - (Number(r.paid) || 0));
-    return `<tr>
-      <td>${(r.dateISO || '').slice(0,10)}</td>
-      <td>${r.employee || ''}</td>
-      <td>${type}</td>
-      <td>${r.item || ''}</td>
-      <td class="text-end">${Number(r.amount || 0).toFixed(2)}</td>
-      <td class="text-end">${Number(r.paid || 0).toFixed(2)}</td>
-      <td class="text-end fw-semibold">${remaining.toFixed(2)}</td>
-      <td>${r.note || ''}</td>
-    </tr>`;
-  }).join('');
 }
-
-// Event listeners for new forms
-$('#formEmployee')?.addEventListener('submit', async e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  const res = await api('/api/employees/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Employee added');
-    loadEmployees();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
+// listeners
+document.addEventListener('DOMContentLoaded', ()=>{
+  $$('input[name="session"]').forEach(r=> r.addEventListener('change', toggleCashMode));
+  $('#manualOut')?.addEventListener('input', updateCashTotalManual);
+  toggleCashMode();
 });
 
-$('#formAttendance')?.addEventListener('submit', async e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  const res = await api('/api/attendance/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Attendance recorded');
-    loadAttendance();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
-});
-
-$('#formEmpPurchase')?.addEventListener('submit', async e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.amount = Number(body.amount || 0);
-  if (!(body.amount > 0)) return showToast('Enter amount', false);
-  body.paid = Number(body.paid || 0);
-  const res = await api('/api/emp_purchases/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Purchase saved');
-    loadEmpTrans();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
-});
-
-$('#formEmpAdvance')?.addEventListener('submit', async e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.amount = Number(body.amount || 0);
-  if (!(body.amount > 0)) return showToast('Enter amount', false);
-  body.paid = Number(body.paid || 0);
-  const res = await api('/api/emp_advances/add', {method:'POST', body: JSON.stringify(body)});
-  if (res.ok) {
-    e.target.reset();
-    showToast('Advance saved');
-    loadEmpTrans();
-  } else {
-    showToast(res.error || 'Failed', false);
-  }
-});
-
-// Filter buttons
-$('#btnAttFilter')?.addEventListener('click', loadAttendance);
-$('#btnEmpFilter')?.addEventListener('click', loadEmpTrans);
-
-// Initial load of employees list (for datalist and directory)
-loadEmployees();
