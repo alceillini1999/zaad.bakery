@@ -719,6 +719,26 @@ app.post('/api/cash/add', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
+
+// ===== Employees =====
+const addEmployee = handleAdd('employees', b=>({ name: b.name||'', phone: b.phone||'', note: b.note||'' }));
+app.post('/api/employees/add', addEmployee);
+
+
+// ===== Attendance =====
+const addAttendance = handleAdd('attendance', b=>({ employee:b.employee||'', action:(b.action||'check_in'), time:b.time||'', note:b.note||'' }));
+app.post('/api/attendance/add', addAttendance);
+
+
+// ===== Employee Purchases =====
+const addEmpPurchase = handleAdd('emp_purchases', b=>({ employee:b.employee||'', item:b.item||'', amount:normNum(b.amount||0), paid:normNum(b.paid||0), note:b.note||'' }));
+app.post('/api/emp_purchases/add', addEmpPurchase);
+
+
+// ===== Employee Advances =====
+const addEmpAdvance = handleAdd('emp_advances', b=>({ employee:b.employee||'', amount:normNum(b.amount||0), paid:normNum(b.paid||0), note:b.note||'' }));
+app.post('/api/emp_advances/add', addEmpAdvance);
+
 // ===== Generic list =====
 app.get('/api/:type/list', async (req,res)=>{
   try{
