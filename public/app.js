@@ -8,19 +8,13 @@ const showToast = (msg, ok=true) => {
   const t=$('#appToast'); t.classList.toggle('text-bg-success', ok); t.classList.toggle('text-bg-danger', !ok);
   t.querySelector('.toast-body').innerHTML=msg; toast.show();
 };
-const ioClient = io();
-let SALES_PAGE=1, SALES_PAGES=1, EXP_PAGE=1, EXP_PAGES=1; const PAGE_SIZE=25;
-function debounce(fn, ms=350){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-function setSkeleton(tbody, cols=4, rows=6){ if(!tbody) return; tbody.innerHTML = Array.from({length:rows}).map(()=>`<tr>${Array.from({length:cols}).map(()=>'<td><span class="placeholder col-9"></span></td>').join('')}</tr>`).join(''); }
-
-ioClient.on('new-record', ({type})=>{
+const ioClient = io(); ioClient.on('new-record', ({type})=>{
   const active = document.querySelector('.tab-pane.active')?.id || '';
   if (active==='tabSales'   && (type==='sales')) loadSales();
   if (active==='tabExpenses'&& (type==='expenses')) loadExpenses();
   if (active==='tabCredit'  && (type==='credits' || type==='credit_payments')) loadCredit();
   if (active==='tabOrders'  && (type==='orders' || type==='orders_status' || type==='orders_payments' || type==='sales')) loadOrders();
   if (active==='tabCash'    && (type==='cash')) loadCash();
-  if (active==='tabRecon'   && (type==='cash_count')) loadRecon();
 });
 $('#themeSwitch')?.addEventListener('change',e=>document.documentElement.classList.toggle('dark', e.target.checked));
 $('#btnShare')?.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(location.href); showToast('<i class="bi bi-clipboard-check"></i> Link copied'); }catch{ showToast('Copy failed',false);} });
@@ -35,30 +29,21 @@ function badgeFor(method){
 }
 
 /* ---------- SALES (بدون Product/Qty/Unit) ---------- */
-
 async function loadSales(){
-  setSkeleton($('#tblSalesBody'), 4, 8);
   const p=new URLSearchParams();
   if($('#salesFrom').value) p.set('from',$('#salesFrom').value);
   if($('#salesTo').value)   p.set('to',$('#salesTo').value);
   if($('#salesMethod').value) p.set('method',$('#salesMethod').value);
-  const res = await api('/api/sales/list?'+p.toString());
-  const rows = (res && Array.isArray(res.rows)) ? res.rows : [];
+  const {rows=[]}=await api('/api/sales/list?'+p.toString());
   const tb=$('#tblSalesBody');
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`; SALES_PAGE=1; SALES_PAGES=1; $('#salesPageInfo')&&( $('#salesPageInfo').textContent='1/1'); return;}
-  SALES_PAGES = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  if (SALES_PAGE>SALES_PAGES) SALES_PAGE=SALES_PAGES;
-  const start = (SALES_PAGE-1)*PAGE_SIZE;
-  const pageRows = rows.slice(start, start+PAGE_SIZE);
-  tb.innerHTML = pageRows.map(r=>`<tr>
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
       <td>${(r.dateISO||'').slice(0,10)}</td>
       <td class="text-end fw-semibold">${Number(r.amount||0).toFixed(2)}</td>
       <td>${badgeFor(r.method)}</td>
       <td>${r.note||''}</td>
-  </tr>`).join('');
-  if($('#salesPageInfo')) $('#salesPageInfo').textContent = `${SALES_PAGE}/${SALES_PAGES}`;
+    </tr>`).join('');
 }
-
 $('#btnSalesFilter')?.addEventListener('click', loadSales);
 $('#btnSalesExport')?.addEventListener('click', (e)=>{
   e.target.href=`/api/sales/export?from=${$('#salesFrom').value||''}&to=${$('#salesTo').value||''}&method=${$('#salesMethod').value||''}`;
@@ -73,18 +58,11 @@ $('#formSale')?.addEventListener('submit', async e=>{
 });
 
 /* ---------- EXPENSES (مع صورة) ---------- */
-
 async function loadExpenses(){
-  setSkeleton($('#tblExpensesBody'), 6, 8);
-  const res = await api('/api/expenses/list');
-  const rows = (res && Array.isArray(res.rows)) ? res.rows : [];
+  const {rows=[]}=await api('/api/expenses/list');
   const tb=$('#tblExpensesBody');
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; EXP_PAGE=1; EXP_PAGES=1; $('#expPageInfo')&&( $('#expPageInfo').textContent='1/1'); return;}
-  EXP_PAGES = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  if (EXP_PAGE>EXP_PAGES) EXP_PAGE=EXP_PAGES;
-  const start = (EXP_PAGE-1)*PAGE_SIZE;
-  const pageRows = rows.slice(start, start+PAGE_SIZE);
-  tb.innerHTML = pageRows.map(r=>`<tr>
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; return;}
+  tb.innerHTML = rows.map(r=>`<tr>
     <td>${(r.dateISO||'').slice(0,10)}</td>
     <td>${r.item||''}</td>
     <td class="text-end">${Number(r.amount||0).toFixed(2)}</td>
@@ -92,9 +70,7 @@ async function loadExpenses(){
     <td>${r.receiptPath?`<a href="${r.receiptPath}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>`:''}</td>
     <td>${r.note||''}</td>
   </tr>`).join('');
-  if($('#expPageInfo')) $('#expPageInfo').textContent = `${EXP_PAGE}/${EXP_PAGES}`;
 }
-
 $('#formExpense')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const form = e.target;
@@ -299,88 +275,6 @@ $('#formCash')?.addEventListener('submit', async e=>{
   if(res.ok){ showToast('Cash saved'); loadCash(); } else showToast(res.error||'Failed',false);
 });
 
-
-/* --- Module: Reconciliation (Cash Reconciliation) --- */
-async function fetchExpected(date, session){
-  try{
-    const d = date || ($('#reconDate')?.value || today());
-    const s = session || ($('#reconSession')?.value || 'morning');
-    const q = new URLSearchParams({ date:d, session:s });
-    const res = await api('/api/recon/expected?'+q.toString());
-    const exp = Number((res && res.expected_total) || 0);
-    if ($('#reconExpected')) $('#reconExpected').textContent = exp.toFixed(2);
-    return { expected_total: exp, breakdown: res.breakdown||{} };
-  }catch(e){ return { expected_total: 0, breakdown:{} }; }
-}
-
-async function loadRecon(){
-  const p=new URLSearchParams();
-  if($('#reFrom')?.value) p.set('from',$('#reFrom').value);
-  if($('#reTo')?.value)   p.set('to',$('#reTo').value);
-  if($('#reSession')?.value) p.set('session',$('#reSession').value);
-  const tb=$('#tblReconBody'); if (!tb) return;
-  setSkeleton(tb, 6, 6);
-  const {rows=[]}=await api('/api/cash_count/list?'+p.toString());
-  // front-end filter by variance if set
-  const hv=$('#reHasVar')?.value||'';
-  let list = rows;
-  if (hv==='yes') list = rows.filter(r => Math.abs(+r.variance||0) > 0.00001);
-  if (hv==='no')  list = rows.filter(r => Math.abs(+r.variance||0) <= 0.00001);
-  if(!list.length){ tb.innerHTML=`<tr><td colspan="6" class="text-secondary p-4">No data.</td></tr>`; return;}
-  tb.innerHTML = list.map(r=>`<tr>
-    <td>${(r.dateISO||'').slice(0,10)}</td>
-    <td class="text-capitalize">${r.session||''}</td>
-    <td class="text-end">${Number(r.expected_total||0).toFixed(2)}</td>
-    <td class="text-end fw-semibold">${Number(r.counted_total||0).toFixed(2)}</td>
-    <td class="text-end ${(+r.variance||0)===0?'text-muted':'text-${(+r.variance||0)>0?'success':'danger'}'}">${Number(r.variance||0).toFixed(2)}</td>
-    <td>${r.note||''}</td>
-  </tr>`).join('');
-}
-
-// Events
-$('#btnReFilter')?.addEventListener('click', loadRecon);
-$('#btnReconExpected')?.addEventListener('click', ()=>fetchExpected());
-$('#reconDate')?.addEventListener('change', debounce(()=>fetchExpected()));
-$('#reconSession')?.addEventListener('change', ()=>fetchExpected());
-
-$('#formRecon')?.addEventListener('submit', async e=>{
-  e.preventDefault();
-  const date = $('#reconDate').value || today();
-  const session = $('#reconSession').value || 'morning';
-  const counted = parseFloat($('#reconCounted').value||'0');
-  if (!date || !session || !(counted>0)) return showToast('Enter date/session and counted total > 0', false);
-
-  // pull expected from UI (or fetch if empty)
-  let expected = parseFloat(($('#reconExpected')?.textContent||'0').replace(/[^0-9.\-]/g,''));
-  if (!(expected>=0)){ const r=await fetchExpected(date, session); expected = r.expected_total||0; }
-
-  const breakdown = {
-    cash:      parseFloat($('#re_bd_cash')?.value||'') || undefined,
-    till:      parseFloat($('#re_bd_till')?.value||'') || undefined,
-    withdraw:  parseFloat($('#re_bd_withdraw')?.value||'') || undefined,
-    send_money:parseFloat($('#re_bd_send')?.value||'') || undefined,
-  };
-  const note = $('#reconNote').value||'';
-  const body = { date, session, counted_total: counted, expected_total: expected, breakdown, note };
-  const res = await api('/api/cash_count/add',{ method:'POST', body: JSON.stringify(body) });
-  if(res.ok){
-    $('#reconVariance').textContent = Number(res.record?.variance||0).toFixed(2);
-    showToast('Reconciliation saved');
-    loadRecon();
-  }else showToast(res.error||'Failed', false);
-});
-
-// CSV export
-$('#btnReconExport')?.addEventListener('click', (e)=>{
-  e.preventDefault();
-  const q=new URLSearchParams();
-  if($('#reFrom').value) q.set('from',$('#reFrom').value);
-  if($('#reTo').value)   q.set('to',$('#reTo').value);
-  if($('#reSession').value) q.set('session',$('#reSession').value);
-  location.href='/api/cash_count/export?'+q.toString();
-});
-
-
 /* ---------- REPORTS + CHART ---------- */
 let salesByMethodChart;
 function drawSalesByMethod({cash, till, withdrawal, send}) {
@@ -524,13 +418,7 @@ $('#btnRunReport')?.addEventListener('click', runReport);
 /* ---------- Boot ---------- */
 document.addEventListener('DOMContentLoaded', ()=>{
   // default dates
-  ['salesFrom','salesTo','repFrom','repTo'].forEach(id=>{ if($('#'+id)) $('#'+id).value=today(); 
-  // Pager buttons
-  $('#salesPrev')?.addEventListener('click', ()=>{ if(SALES_PAGE>1){SALES_PAGE--; loadSales();} });
-  $('#salesNext')?.addEventListener('click', ()=>{ if(SALES_PAGE<SALES_PAGES){SALES_PAGE++; loadSales();} });
-  $('#expPrev')?.addEventListener('click', ()=>{ if(EXP_PAGE>1){EXP_PAGE--; loadExpenses();} });
-  $('#expNext')?.addEventListener('click', ()=>{ if(EXP_PAGE<EXP_PAGES){EXP_PAGE++; loadExpenses();} });
-});
+  ['salesFrom','salesTo','repFrom','repTo'].forEach(id=>{ if($('#'+id)) $('#'+id).value=today(); });
   loadDenoms();
 
   // load lists initially
@@ -603,131 +491,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
   toggleCashMode();
 });
 
-
-
-/* ===== EMPLOYEES MODULE — NEW ===== */
-
-async function loadEmployees(){
-  try{
-    const dl = document.getElementById('dlEmployees'); if(!dl) return;
-    const names = new Set();
-    // Try explicit employees list
-    const emp = await api('/api/employees/list');
-    (emp.rows||[]).forEach(r=>{ if((r.name||'').trim()) names.add(r.name.trim()); });
-    // Fallback: derive from attendance and transactions
-    if (names.size===0){
-      const [att, p, a] = await Promise.all([
-        api('/api/attendance/list'),
-        api('/api/emp_purchases/list'),
-        api('/api/emp_advances/list'),
-      ]);
-      [ ...(att.rows||[]), ...(p.rows||[]), ...(a.rows||[]) ].forEach(r=>{
-        const nm=(r.employee||'').trim(); if(nm) names.add(nm);
-      });
-    }
-    dl.innerHTML = Array.from(names).sort().map(n => `<option>${n}</option>`).join('');
-  }catch(e){ /* ignore */ }
-}
-}
-
-async function loadAttendance(){
-  const p=new URLSearchParams();
-  if($('#attFrom')?.value) p.set('from',$('#attFrom').value);
-  if($('#attTo')?.value)   p.set('to',$('#attTo').value);
-  if($('#attEmployee')?.value) p.set('employee',$('#attEmployee').value);
-
-  const {rows=[]}=await api('/api/attendance/list?'+p.toString());
-  const tb=$('#tblAttendanceBody'); if(!tb) return;
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="5" class="text-secondary p-4">No data.</td></tr>`; return;}
-  tb.innerHTML = rows.map(r=>`<tr>
-      <td>${(r.dateISO||'').slice(0,10)}</td>
-      <td>${r.employee||''}</td>
-      <td class="text-capitalize">${(r.action||'').replace('_',' ')}</td>
-      <td>${r.time||''}</td>
-      <td>${r.note||''}</td>
-    </tr>`).join('');
-}
-
-async function loadEmpTrans(){
-  const p=new URLSearchParams();
-  if($('#empFrom')?.value) p.set('from',$('#empFrom').value);
-  if($('#empTo')?.value)   p.set('to',$('#empTo').value);
-  if($('#empEmployee')?.value) p.set('employee',$('#empEmployee').value);
-  const typeFilter = $('#empType')?.value || '';
-
-  const [purch, adv] = await Promise.all([
-    api('/api/emp_purchases/list?'+p.toString()),
-    api('/api/emp_advances/list?'+p.toString())
-  ]);
-  const rowsP = Array.isArray(purch.rows)?purch.rows:[];
-  const rowsA = Array.isArray(adv.rows)?adv.rows:[];
-  let all = [
-    ...rowsP.map(r=>({ ...r, _type:'purchase', item: r.item||'' })),
-    ...rowsA.map(r=>({ ...r, _type:'advance', item: '' })),
-  ];
-  if (typeFilter) all = all.filter(r=>r._type===typeFilter);
-  all.sort((a,b)=>String(a.dateISO).localeCompare(String(b.dateISO)));
-
-  const tb=$('#tblEmpTransBody'); if(!tb) return;
-  if(!all.length){ tb.innerHTML=`<tr><td colspan="8" class="text-secondary p-4">No data.</td></tr>`; return;}
-  tb.innerHTML = all.map(r=>{
-    const amount = Number(r.amount||0);
-    const paid   = Number(r.paid||0);
-    const remaining = (amount - paid);
-    return `<tr>
-      <td>${(r.dateISO||'').slice(0,10)}</td>
-      <td>${r.employee||''}</td>
-      <td class="text-capitalize">${r._type}</td>
-      <td>${r.item||''}</td>
-      <td class="text-end">${amount.toFixed(2)}</td>
-      <td class="text-end">${paid.toFixed(2)}</td>
-      <td class="text-end fw-semibold">${remaining.toFixed(2)}</td>
-      <td>${r.note||''}</td>
-    </tr>`;
-  }).join('');
-}
-
-// Forms
-document.getElementById('formAttendance')?.addEventListener('submit', async e=>{
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  if(!(body.employee||'').trim()) return showToast('Employee required', false);
-  const res = await api('/api/attendance/add', { method:'POST', body: JSON.stringify(body) });
-  if(res.ok){ e.target.reset(); showToast('Attendance saved'); loadAttendance(); } else showToast(res.error||'Failed', false);
-});
-
-document.getElementById('formEmpPurchase')?.addEventListener('submit', async e=>{
-  e.preventDefault();
-  const fd = new FormData(e.target); const body = Object.fromEntries(fd.entries());
-  if(!(body.employee||'').trim()) return showToast('Employee required', false);
-  if(!(Number(body.amount||0)>0))  return showToast('Enter valid amount', false);
-  const res = await api('/api/emp_purchases/add', { method:'POST', body: JSON.stringify(body) });
-  if(res.ok){ e.target.reset(); showToast('Purchase saved'); loadEmpTrans(); } else showToast(res.error||'Failed', false);
-});
-
-document.getElementById('formEmpAdvance')?.addEventListener('submit', async e=>{
-  e.preventDefault();
-  const fd = new FormData(e.target); const body = Object.fromEntries(fd.entries());
-  if(!(body.employee||'').trim()) return showToast('Employee required', false);
-  if(!(Number(body.amount||0)>0))  return showToast('Enter valid amount', false);
-  const res = await api('/api/emp_advances/add', { method:'POST', body: JSON.stringify(body) });
-  if(res.ok){ e.target.reset(); showToast('Advance saved'); loadEmpTrans(); } else showToast(res.error||'Failed', false);
-});
-
-// Filters
-document.getElementById('btnAttFilter')?.addEventListener('click', loadAttendance);
-document.getElementById('btnEmpFilter')?.addEventListener('click', loadEmpTrans);
-
-// Socket update for new types
-ioClient?.on?.('new-record', ({type})=>{
-  const active = document.querySelector('.tab-pane.active')?.id || '';
-  if (active==='tabStaff' && (type==='attendance' || type==='emp_purchases' || type==='emp_advances' || type==='employees')){
-    loadAttendance(); loadEmpTrans(); loadEmployees();
-  }
-});
-
-// Bootstrap: initial load
-document.addEventListener('DOMContentLoaded', ()=>{
-  loadEmployees(); loadAttendance(); loadEmpTrans();
-});
