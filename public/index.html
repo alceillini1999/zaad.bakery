@@ -49,7 +49,7 @@
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCash" type="button"><i class="bi bi-cash-stack"></i> Cash Count</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports" type="button"><i class="bi bi-graph-up"></i> Reports</button></li>
       
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabStaff" type="button"><i class="bi bi-person-badge"></i> Employees</button></li></ul>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabStaff" type="button"><i class="bi bi-person-badge"></i> Employees</button></li>        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabRecon" type="button"><i class="bi bi-cash-coin"></i> Reconciliation</button></li></ul>
 
       <div class="tab-content">
 
@@ -100,7 +100,7 @@
                       <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
                     </select>
                     <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
-                    <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
+                    <a id="btnSalesExport" <div class="d-flex align-items-center ms-2" id="salesPager"><button class="btn btn-sm btn-light" id="salesPrev">Prev</button><span id="salesPageInfo" class="mx-2 small text-muted">1/1</span><button class="btn btn-sm btn-light" id="salesNext">Next</button></div> class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
                   </div>
                 </div>
                 <div class="table-responsive">
@@ -173,7 +173,7 @@
                     <option>Cash</option>
                     <option>Withdrawal</option>
                   </select>
-                  <button id="btnExpFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                  <button id="btnExpFilter" <div class="d-flex align-items-center ms-2" id="expPager"><button class="btn btn-sm btn-light" id="expPrev">Prev</button><span id="expPageInfo" class="mx-2 small text-muted">1/1</span><button class="btn btn-sm btn-light" id="expNext">Next</button></div> class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
                 </div>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="tblExp">
@@ -410,7 +410,7 @@ id="tabReports">
                   <ul class="nav nav-pills" id="empTransTabs">
                     <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#empPurchTab" type="button">Purchases</button></li>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#empAdvTab" type="button">Advances</button></li>
-                  </ul>
+                          <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabRecon" type="button"><i class="bi bi-cash-coin"></i> Reconciliation</button></li></ul>
                 </div>
                 <div class="card-body">
                   <div class="tab-content">
