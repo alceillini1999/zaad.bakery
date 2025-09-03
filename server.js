@@ -52,6 +52,7 @@ const FILES = {
   attendance:       path.join(DATA_DIR, 'attendance.jsonl'),
   emp_purchases:    path.join(DATA_DIR, 'emp_purchases.jsonl'),
   emp_advances:     path.join(DATA_DIR, 'emp_advances.jsonl'),
+  cash_count:       path.join(DATA_DIR, 'cash_count.jsonl'),
 };
 
 const ALL_TYPES = ['sales','expenses','credits','cash','orders','orders_status','orders_payments','credit_payments'];
@@ -206,7 +207,6 @@ function sheetSpec(type, r) {
     };
     case 'credit_payments': return {
       name: tab('CreditPayments'),
-      // Added Method column per user request
       headers: ['ID','DateISO','CreatedAt','UpdatedAt','Customer','Paid','Method','Note'],
       row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.customer||'', normNum(r.paid), r.method||'', r.note||'']
     };
@@ -230,32 +230,34 @@ function sheetSpec(type, r) {
       headers: ['ID','DateISO','CreatedAt','UpdatedAt','Session','Total','Note','BreakdownJSON'],
       row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.session||'', normNum(r.total), r.note||'', JSON.stringify(r.breakdown||{})]
     };
-
-case 'employees': return {
-  name: tab('Employees'),
-  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Name','Phone','Note'],
-  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.name||'', r.phone||'', r.note||'']
-};
-case 'attendance': return {
-  name: tab('Attendance'),
-  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Action','Time','Note'],
-  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', r.action||'', r.time||'', r.note||'']
-};
-case 'emp_purchases': return {
-  name: tab('EmpPurchases'),
-  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Item','Amount','Paid','Note'],
-  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', r.item||'', normNum(r.amount), normNum(r.paid), r.note||'']
-};
-case 'emp_advances': return {
-  name: tab('EmpAdvances'),
-  headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Amount','Paid','Note'],
-  row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', normNum(r.amount), normNum(r.paid), r.note||'']
-};
-default: return null;
-
+    case 'employees': return {
+      name: tab('Employees'),
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Name','Phone','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.name||'', r.phone||'', r.note||'']
+    };
+    case 'attendance': return {
+      name: tab('Attendance'),
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Action','Time','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', r.action||'', r.time||'', r.note||'']
+    };
+    case 'emp_purchases': return {
+      name: tab('EmpPurchases'),
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Item','Amount','Paid','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', r.item||'', normNum(r.amount), normNum(r.paid), r.note||'']
+    };
+    case 'emp_advances': return {
+      name: tab('EmpAdvances'),
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Employee','Amount','Paid','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.employee||'', normNum(r.amount), normNum(r.paid), r.note||'']
+    };
+    case 'cash_count': return {
+      name: tab('CashCount'),
+      headers: ['ID','DateISO','CreatedAt','UpdatedAt','Session','ExpectedTotal','CountedTotal','Variance','Cash','Till','Withdraw','SendMoney','Note'],
+      row: [r.id, r.dateISO, r.createdAt, r.updatedAt || r.createdAt, r.session||'', normNum(r.expected_total), normNum(r.counted_total), normNum(r.variance), (r.breakdown||{}).cash||'', (r.breakdown||{}).till||'', (r.breakdown||{}).withdraw||'', (r.breakdown||{}).send_money||'', r.note||'']
+    };
+    default: return null;
   }
 }
-
 async function ensureTabAndHeader(sheets, sheetName, headers) {
   if (_sheetsState.knownTabs.has(sheetName)) return;
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
@@ -759,6 +761,24 @@ app.get('/api/orders/list', async (req,res)=>{
   }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
 });
 
+
+// Generic add handler: use like handleAdd('type', mapperFn)
+function handleAdd(type, mapper){
+  return async (req,res)=>{
+    try{
+      const b=req.body||{}; const now=new Date();
+      const record = Object.assign({
+        id: newId(),
+        dateISO: parseToISO(b.date || b.dateISO || todayISO()),
+        createdAt: now.toISOString(),
+        updatedAt: (b.updatedAt||now.toISOString())
+      }, mapper ? mapper(b) : {});
+      await appendRecord(type, record);
+      io.emit('new-record', { type, record });
+      res.json({ ok:true, record });
+    }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+  };
+}
 // ===== Cash =====
 app.post('/api/cash/add', async (req,res)=>{
   try{
@@ -779,6 +799,63 @@ app.post('/api/cash/add', async (req,res)=>{
   }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
 });
 
+// --- Module: Reconciliation (cash_count) ---
+app.post('/api/cash_count/add', handleAdd('cash_count', (b)=>{
+  const expected = normNum(b.expected_total||0);
+  const counted  = normNum(b.counted_total||0);
+  const breakdown = Object.assign({}, b.breakdown||{});
+  const variance = counted - expected;
+  return {
+    session: (b.session||'morning').toLowerCase(),
+    expected_total: expected,
+    counted_total: counted,
+    breakdown,
+    variance,
+    note: b.note || ''
+  };
+}));
+
+// Helper: compute expected total for date/session
+app.get('/api/recon/expected', async (req,res)=>{
+  try{
+    const date = parseToISO(req.query.date || todayISO());
+    const session = (req.query.session||'morning').toLowerCase();
+    // Gather base data for the day
+    const [sales, expenses, cash] = await Promise.all([
+      filterByQuery(await readAll('sales'),   {from:date, to:date}),
+      filterByQuery(await readAll('expenses'),{from:date, to:date}),
+      filterByQuery(await readAll('cash'),    {from:date, to:date}),
+    ]);
+    const sCash = sumBy(sales, r=>/cash/i.test(r.method)?normNum(r.amount):0);
+    const withdrawOut = sumBy(cash.filter(x=>x.session==='withdraw_out'), r=>normNum(r.total));
+    const expTot = sumBy(expenses, r=>normNum(r.amount));
+
+    let expected = 0;
+    if (session==='evening'){
+      const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>normNum(r.total));
+      expected = morning + sCash + withdrawOut - expTot;
+    } else { // morning → try previous day carry
+      const d = new Date(date+'T00:00:00'); d.setDate(d.getDate()-1);
+      const prev = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      const [sPrev, ePrev, kPrev] = await Promise.all([
+        filterByQuery(await readAll('sales'),   {from:prev, to:prev}),
+        filterByQuery(await readAll('expenses'),{from:prev, to:prev}),
+        filterByQuery(await readAll('cash'),    {from:prev, to:prev}),
+      ]);
+      const morningPrev   = sumBy(kPrev.filter(x=>x.session==='morning'), r=>normNum(r.total));
+      const eveningPrev   = sumBy(kPrev.filter(x=>x.session==='evening'), r=>normNum(r.total));
+      const sCashPrev     = sumBy(sPrev, r=>/cash/i.test(r.method)?normNum(r.amount):0);
+      const withdrawPrev  = sumBy(kPrev.filter(x=>x.session==='withdraw_out'), r=>normNum(r.total));
+      const expPrev       = sumBy(ePrev, r=>normNum(r.amount));
+      const cashAvailPrev = morningPrev + sCashPrev + withdrawPrev - expPrev;
+      const carry         = cashAvailPrev - eveningPrev;
+      expected = Math.max(0, carry);
+    }
+    res.json({ ok:true, expected_total: Number(expected.toFixed(2)), breakdown: { cash: sCash, withdraw: withdrawOut } });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message, expected_total: 0 }); }
+});
+
+// ===== Generic list =====
 // ===== Generic list =====
 app.get('/api/:type/list', async (req,res)=>{
   try{
@@ -968,3 +1045,325 @@ server.listen(PORT, HOST, ()=> {
     console.log('[Sheets] Sync is enabled.');
   }
 });
+
+app.get('/api/:type/list', async (req,res)=>{
+  try{
+    const type=req.params.type;
+    if (type==='orders') return; // handled above
+    const rows = filterByQuery(await readAll(type), req.query||{});
+    res.json({ ok:true, type, count: rows.length, rows });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// ===== CSV Export =====
+app.get('/api/:type/export', async (req,res)=>{
+  try{
+    const type=req.params.type;
+    const rows = filterByQuery(await readAll(type), req.query||{});
+    const csv = toCSV(rows);
+    res.setHeader('Content-Disposition', `attachment; filename="${type}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(csv);
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// ===== Daily PDF Report =====
+app.get('/api/report/daily-pdf', async (req,res)=>{
+  try{
+    const PDFDocument = require('pdfkit');
+    const from = req.query.from || todayISO(), to = req.query.to || from;
+    const [sales, expenses, credits, orders, cash, payments] = await Promise.all([
+      filterByQuery(await readAll('sales'),   {from,to}),
+      filterByQuery(await readAll('expenses'),{from,to}),
+      filterByQuery(await readAll('credits'), {from,to}),
+      filterByQuery(await readAll('orders'),  {from,to}),
+      filterByQuery(await readAll('cash'),    {from,to}),
+      filterByQuery(await readAll('credit_payments'),{from,to}),
+    ]);
+
+    const sCash = sumBy(sales, r=>/cash/i.test(r.method)?normNum(r.amount):0);
+    const sTill = sumBy(sales, r=>/till/i.test(r.method)?normNum(r.amount):0);
+    const sWith = sumBy(sales, r=>/withdraw/i.test(r.method)?normNum(r.amount):0);
+    const sSend = sumBy(sales, r=>/send/i.test(r.method)?normNum(r.amount):0);
+const totalSales = sCash + sTill + sWith + sSend;
+    const expTot = sumBy(expenses, r=>normNum(r.amount));
+const expCash = sumBy(expenses, r=>/cash/i.test(r.method)?normNum(r.amount):0);
+const expTill = sumBy(expenses, r=>/till/i.test(r.method)?normNum(r.amount):0);
+const expWith = sumBy(expenses, r=>/withdraw/i.test(r.method)?normNum(r.amount):0);
+const expSend = sumBy(expenses, r=>/send/i.test(r.method)?normNum(r.amount):0);
+    const crGross = sumBy(credits, r=>normNum(r.amount) - normNum(r.paid||0));
+    const crPays  = sumBy(payments, r=>normNum(r.paid));
+    const crOutstanding = crGross - crPays;
+    const morning = sumBy(cash.filter(x=>x.session==='morning'), r=>normNum(r.total));
+    const evening = sumBy(cash.filter(x=>x.session==='evening'), r=>normNum(r.total));
+const tillOut     = sumBy(cash.filter(x=>x.session==='till_out'), r=>normNum(r.total));
+const withdrawOut = sumBy(cash.filter(x=>x.session==='withdraw_out'), r=>normNum(r.total));
+const sendOut     = sumBy(cash.filter(x=>x.session==='send_out'), r=>normNum(r.total));
+// Cash available is: cash morning + cash sales + withdrawal-out - total expenses
+const cashAvailable = morning + sCash + withdrawOut - expTot;
+        // Manual cash_out for selected day
+    let manualCashOut = 0;
+    if (from===to) {
+      const kc = await filterByQuery(await readAll('cash'), {from, to});
+      manualCashOut = sumBy(kc.filter(x=>x.session==='cash_out'), r=>normNum(r.total));
+    }
+const eod     = sumBy(cash.filter(x=>x.session==='withdraw_out' || x.session==='eod'),     r=>normNum(r.total));
+    const expected = morning + sCash - expTot;
+    const diff = expected - evening;
+// Compute next morning cash (for next day) to determine cash out
+let nextMorning = 0;
+try {
+  if (from === to) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + 1);
+    const next = d.toISOString().slice(0,10);
+    // Read all cash records and sum the next day morning entries
+    const allCash = await readAll('cash');
+    nextMorning = sumBy(allCash.filter(x => (x.session === 'morning') && ((x.dateISO || x.date) === next)), r => normNum(r.total));
+  }
+} catch (e) { nextMorning = 0; }
+const computedCashOut = nextMorning - cashAvailable;
+
+    res.setHeader('Content-Type','application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="zaad-report-${from}_${to}.pdf"`);
+    const doc = new PDFDocument({ margin: 40 });
+    doc.pipe(res);
+    doc.fontSize(18).text('Zaad Bakery — Daily Report', {align:'center'}).moveDown(0.5);
+    doc.fontSize(11).text(`Range: ${from} to ${to}`).moveDown();
+
+    const lines = [
+  ['1) Expenses', null],
+  ['Expenses', expTot],
+  ['2) Sales by Method', null],
+  ['Sales (Cash)', sCash], ['Sales (Till No)', sTill], ['Sales (Send Money)', sSend], ['Sales (Withdrawal)', sWith],
+  ['3) Cash Counts', null],
+  ['Cash Morning', morning], ['Cash Evening', evening],
+  ['4) Cash available in cashier', null],
+  ['Cash available (computed)', cashAvailable],
+  ['5) Outs', null],
+  // Cash Out is defined as next morning cash minus current day's available cash
+  ['Cash Out (next morning - available)', manualCashOut || computedCashOut], ['Till No Out', tillOut], ['Withdrawal Out', withdrawOut], ['Send Money Out', sendOut],
+  ['6) Remaining (carry to next day)', null],
+  ['Cash remaining (evening)', evening], ['Till No remaining', sTill - tillOut - expTill], ['Withdrawal remaining', sWith - withdrawOut - expWith], ['Send Money remaining', sSend - sendOut - expSend],
+  ['7) Total Sales', null],
+  ['Total Sales', totalSales]
+];
+    lines.forEach(([t,v])=> {
+  if (v===null) { doc.moveDown(0.2).fontSize(13).text(t); doc.moveDown(0.1).fontSize(11); }
+  else { doc.text(`${t}: ${(+v).toFixed(2)}`); }
+});
+    doc.moveDown().text('Generated by Zaad Bakery System', {align:'right', oblique:true});
+    doc.end();
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// ===== Invoice PDF =====
+app.post('/api/invoices/create', async (req,res)=>{
+  try{
+    const PDFDocument = require('pdfkit');
+    const { id, clientPhone='', clientName='', items=[] } = req.body || {};
+    if(!items || !Array.isArray(items) || !items.length) {
+      return res.status(400).json({ ok:false, error:'items required' });
+    }
+    const invId = id || ('INV-' + newId());
+    const filePath = path.join(INVOICE_DIR, `${invId}.pdf`);
+    const publicUrl = `/invoices/${invId}.pdf`;
+
+    const doc = new PDFDocument({ margin: 36 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    doc.fontSize(18).text('Zaad Bakery — Invoice', {align:'center'}).moveDown(0.5);
+    doc.fontSize(11).text(`Invoice ID: ${invId}`);
+    doc.text(`Date: ${todayISO()}`);
+    if(clientName)  doc.text(`Client: ${clientName}`);
+    if(clientPhone) doc.text(`Phone: ${clientPhone}`);
+    doc.moveDown();
+
+    doc.fontSize(12);
+    doc.text('Items:', {underline:true});
+    doc.moveDown(0.3);
+    let sub=0;
+    items.forEach((it,idx)=>{
+      const name = (it.name||'').toString();
+      const price= normNum(it.price);
+      const qty  = normNum(it.qty);
+      const line = price*qty;
+      sub += line;
+      doc.text(`${idx+1}. ${name} — ${price.toFixed(2)} x ${qty} = ${line.toFixed(2)}`);
+    });
+    doc.moveDown();
+    doc.fontSize(14).text(`Total: ${sub.toFixed(2)}`, {align:'right'}).moveDown();
+
+    doc.fontSize(11).text('Thank you for your purchase! We appreciate your business.', {align:'center'});
+    doc.end();
+
+    await new Promise((ok,fail)=>{ stream.on('finish',ok); stream.on('error',fail); });
+
+    const scheme = (req.headers['x-forwarded-proto'] || req.protocol || 'http');
+    const host   = req.get('host');
+    const absUrl = `${scheme}://${host}${publicUrl}`;
+    let wa = 'https://wa.me/';
+    if(clientPhone){ const p = clientPhone.replace(/[^\d+]/g,''); wa += p.startsWith('+')? p.slice(1) : p; }
+    const waLink = `${wa}?text=${encodeURIComponent(`Your invoice ${invId}: ${absUrl}`)}`;
+
+    io.emit('new-record', { type:'invoice', record:{ id:invId, url:publicUrl }});
+    res.json({ ok:true, id: invId, url: publicUrl, absoluteUrl: absUrl, waLink });
+  }catch(err){ console.error(err); res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// ===== Sheets Health =====
+app.get('/api/sheets/health', async (req, res) => {
+  try {
+    const sheets = await getSheetsClient();
+    if (!sheets) return res.status(200).json({ ok:false, reason: 'disabled or not configured' });
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    res.json({ ok:true, title: meta.data.properties.title, sheets: (meta.data.sheets||[]).map(s=>s.properties.title) });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// ---------- Boot ----------
+ensureDirs();
+server.listen(PORT, HOST, ()=> {
+  console.log(`Server running on http://localhost:${PORT}`);
+  if (!_sheetsState.enabled) {
+    console.log('[Sheets] Sync disabled. Set GOOGLE_SERVICE_ACCOUNT_JSON (or GS_CREDENTIALS_JSON) & SPREADSHEET_ID (or GS_SHEET_ID) to enable.');
+  } else {
+    console.log('[Sheets] Sync is enabled.');
+  }
+});
+
+
+// --- Module: Reliability & Speed — Archiving/Rotation + Backups ---
+const ARCHIVE_JSONL = String(process.env.ARCHIVE_JSONL||'0')==='1';
+const ARCHIVE_AFTER_MONTHS = Number(process.env.ARCHIVE_AFTER_MONTHS||2);
+const ARCHIVE_DIR = path.join(__dirname, process.env.ARCHIVE_DIR||'archives');
+const LOG_DIR = path.join(__dirname, 'logs');
+fs.mkdirSync(ARCHIVE_DIR, { recursive: true }); fs.mkdirSync(LOG_DIR,{recursive:true});
+
+function monthDiff(a,b){ return (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth()); }
+
+async function listArchivePlan(){
+  const plan = {};
+  const now = new Date();
+  for (const [type,file] of Object.entries(FILES)){
+    const rows = await readAll(type);
+    const move = rows.filter(r=>{
+      const d = new Date((r.dateISO||r.createdAt||'').slice(0,10)); if (isNaN(d)) return false;
+      return monthDiff(d, now) > ARCHIVE_AFTER_MONTHS;
+    });
+    if (move.length) plan[type]=move.length;
+  }
+  return plan;
+}
+
+async function runArchive(){
+  const plan = await listArchivePlan();
+  const stamp = new Date().toISOString().slice(0,7); // YYYY-MM
+  const archiverTry = (()=>{ try{ return require('archiver'); }catch{ return null; } })();
+  for (const [type,count] of Object.entries(plan)){
+    const file = FILES[type];
+    const all = await readAll(type);
+    const now = new Date();
+    const keep=[]; const out=[];
+    for (const r of all){
+      const d = new Date((r.dateISO||r.createdAt||'').slice(0,10));
+      if (!isNaN(d) && monthDiff(d, now) > ARCHIVE_AFTER_MONTHS) out.push(r); else keep.push(r);
+    }
+    if (!out.length) continue;
+    const archiveJsonl = out.map(r=>JSON.stringify(r)).join('\n')+'\n';
+    const targetBase = path.join(ARCHIVE_DIR, `${type}.${stamp}.archive`);
+    const jsonlPath = `${targetBase}.jsonl`;
+    await fsp.writeFile(jsonlPath, archiveJsonl, 'utf8');
+    // Try to zip (if archiver available), else gzip, else leave jsonl
+    if (archiverTry){
+      const zipPath = `${targetBase}.zip`;
+      const output = fs.createWriteStream(zipPath);
+      const arch = archiverTry('zip', { zlib: { level: 9 } });
+      arch.pipe(output); arch.append(fs.createReadStream(jsonlPath), { name: path.basename(jsonlPath) });
+      await arch.finalize();
+      await fsp.unlink(jsonlPath).catch(()=>{});
+    } else {
+      const zlib = require('zlib');
+      const gzPath = `${targetBase}.jsonl.gz`;
+      await new Promise((resolve,reject)=>{
+        const inp = fs.createReadStream(jsonlPath);
+        const out = fs.createWriteStream(gzPath);
+        inp.pipe(zlib.createGzip()).pipe(out).on('finish', resolve).on('error', reject);
+      });
+      await fsp.unlink(jsonlPath).catch(()=>{});
+    }
+    // Rewrite keep back to primary file
+    const lines = keep.map(r=>JSON.stringify(r)).join('\n') + (keep.length?'\n':'');
+    await fsp.writeFile(file, lines, 'utf8');
+  }
+  return plan;
+}
+
+app.get('/api/admin/archive/preview', async (req,res)=>{
+  try{ const plan = await listArchivePlan(); res.json({ ok:true, plan }); }
+  catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+app.post('/api/admin/archive/run', async (req,res)=>{
+  try{ const result = await runArchive(); res.json({ ok:true, result }); }
+  catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// --- Backups ---
+const BACKUP_ENABLED = String(process.env.BACKUP_ENABLED||'0')==='1';
+const BACKUP_TIME = process.env.BACKUP_TIME || '03:00';
+const BACKUP_DIR = path.join(__dirname, process.env.BACKUP_DIR||'backups');
+fs.mkdirSync(BACKUP_DIR,{recursive:true});
+
+function nowLocalISO(){ return todayISO(new Date())+'T'+new Date().toTimeString().slice(0,8); }
+
+async function runBackup(){
+  const day = todayISO(new Date());
+  const folder = path.join(BACKUP_DIR, day);
+  fs.mkdirSync(folder,{recursive:true});
+  for (const [type,file] of Object.entries(FILES)){
+    const dest = path.join(folder, path.basename(file));
+    await fsp.copyFile(file, dest);
+  }
+  // zip folder (if archiver available) else gzip per file
+  const archiverTry = (()=>{ try{ return require('archiver'); }catch{ return null; } })();
+  const zipPath = path.join(BACKUP_DIR, `${day}.zip`);
+  if (archiverTry){
+    const output = fs.createWriteStream(zipPath);
+    const arch = archiverTry('zip', { zlib: { level: 9 } });
+    arch.pipe(output);
+    arch.directory(folder, false);
+    await arch.finalize();
+  }
+  return { folder, zip: fs.existsSync(zipPath) ? zipPath : null };
+}
+
+app.get('/api/admin/backup/preview', async (req,res)=>{
+  try{
+    const files = Object.values(FILES);
+    const stats = await Promise.all(files.map(f=>fsp.stat(f).then(s=>s.size).catch(()=>0)));
+    const total = stats.reduce((a,b)=>a+b,0);
+    res.json({ ok:true, files: files.length, totalBytes: total });
+  }catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+app.post('/api/admin/backup/run', async (req,res)=>{
+  try{ const out = await runBackup(); res.json({ ok:true, ...out }); }
+  catch(err){ res.status(500).json({ ok:false, error: err.message }); }
+});
+
+// Schedulers
+if (ARCHIVE_JSONL){
+  setInterval(()=>{ runArchive().catch(e=>console.warn('[archive]', e.message)); }, 24*60*60*1000);
+}
+if (BACKUP_ENABLED){
+  setInterval(()=>{
+    try{
+      const [hh,mm] = BACKUP_TIME.split(':').map(x=>parseInt(x,10));
+      const now = new Date(); if (now.getHours()===hh && now.getMinutes()===mm){
+        runBackup().catch(e=>console.warn('[backup]', e.message));
+      }
+    }catch{}
+  }, 60*1000);
+}
