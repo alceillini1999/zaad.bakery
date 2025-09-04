@@ -349,7 +349,7 @@
                 <div class="card-header bg-white fw-semibold"><i class="bi bi-person-plus"></i> Add Employee</div>
                 <div class="card-body">
                   <form id="formEmployee" class="vstack gap-3">
-                    <div><label class="form-label">Name</label><input class="form-control" name="name" required></div>
+                    <div><label class="form-label">Name</label><input class="form-control" name="name" list="dlEmployeesFixed" required></div>
                     <div><label class="form-label">Phone</label><input class="form-control" name="phone"></div>
                     <div><label class="form-label">Note</label><input class="form-control" name="note"></div>
                     <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
@@ -423,7 +423,9 @@
               </div>
             </div>
           </div>
-        </section>
+        
+<datalist id="dlEmployeesFixed"><option>darmin</option><option>veromica</option><option>shangel</option><option>mary</option><option>farida</option><option>roth</option><option>walled</option><option>ahmed</option></datalist>
+</section>
     
         <!-- REPORTS -->
         <section class="tab-pane fade" 

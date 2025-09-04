@@ -29,6 +29,9 @@ function badgeFor(method){
   return `<span class="badge badge-method badge-Cash">Cash</span>`;
 }
 
+
+// --- Fixed employee names (fallback for selects) ---
+const FIXED_EMPLOYEES = ['darmin','veromica','shangel','mary','farida','roth','walled','ahmed'];
 /* ---------- SALES (بدون Product/Qty/Unit) ---------- */
 async function loadSales(){
   const p=new URLSearchParams();
@@ -427,8 +430,14 @@ async function loadEmployees(){
     else tb.innerHTML = rows.map(r=>`<tr><td>${r.name||''}</td><td>${r.phone||''}</td><td>${r.note||''}</td></tr>`).join('');
   }
   // fill selects
-  const opts = rows.map(r=>`<option value="${(r.name||'').replace(/"/g,'&quot;')}">${r.name||''}</option>`).join('');
+    // merge server employees with fixed fallback list
+  const names = Array.from(new Set([
+    ...FIXED_EMPLOYEES,
+    ...rows.map(r => (r.name||'').trim())
+  ].filter(Boolean)));
+  const opts = names.map(n=>`<option value="${n.replace(/\"/g,'&quot;')}">${n}</option>`).join('');
   ['attEmployee','purEmployee','advEmployee'].forEach(id=>{ const el=$('#'+id); if(el) el.innerHTML=opts; });
+#'+id); if(el) el.innerHTML=opts; });
   // load attendance/purchases/advances tables
   const todayQ = new URLSearchParams({ from: today(), to: today() }).toString();
   const [att, pur, adv] = await Promise.all([
