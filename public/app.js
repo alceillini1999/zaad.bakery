@@ -13,6 +13,7 @@ const ioClient = io(); ioClient.on('new-record', ({type})=>{
   if (active==='tabSales'   && (type==='sales')) loadSales();
   if (active==='tabExpenses'&& (type==='expenses')) loadExpenses();
   if (active==='tabCredit'  && (type==='credits' || type==='credit_payments')) loadCredit();
+  if (active==='tabStaff' && (type==='employees' || type==='attendance' || type==='emp_purchases' || type==='emp_advances')) loadEmployees();
   if (active==='tabOrders'  && (type==='orders' || type==='orders_status' || type==='orders_payments' || type==='sales')) loadOrders();
   if (active==='tabCash'    && (type==='cash')) loadCash();
 });
@@ -415,6 +416,83 @@ const totalSales = sCash + sTill + sWith + sSend;
 
 $('#btnRunReport')?.addEventListener('click', runReport);
 
+
+/* ---------- EMPLOYEES + ATTENDANCE ---------- */
+async function loadEmployees(){
+  const res = await api('/api/employees/list');
+  const rows = (res && Array.isArray(res.rows)) ? res.rows : [];
+  const tb = $('#tblEmployeesBody');
+  if (tb){
+    if (!rows.length) tb.innerHTML = `<tr><td colspan="3" class="text-secondary p-4">No data.</td></tr>`;
+    else tb.innerHTML = rows.map(r=>`<tr><td>${r.name||''}</td><td>${r.phone||''}</td><td>${r.note||''}</td></tr>`).join('');
+  }
+  // fill selects
+  const opts = rows.map(r=>`<option value="${(r.name||'').replace(/"/g,'&quot;')}">${r.name||''}</option>`).join('');
+  ['attEmployee','purEmployee','advEmployee'].forEach(id=>{ const el=$('#'+id); if(el) el.innerHTML=opts; });
+  // load attendance/purchases/advances tables
+  const todayQ = new URLSearchParams({ from: today(), to: today() }).toString();
+  const [att, pur, adv] = await Promise.all([
+    api('/api/attendance/list?'+todayQ),
+    api('/api/emp_purchases/list?'+todayQ),
+    api('/api/emp_advances/list?'+todayQ),
+  ]);
+  const attRows = (att && Array.isArray(att.rows)) ? att.rows : [];
+  const purRows = (pur && Array.isArray(pur.rows)) ? pur.rows : [];
+  const advRows = (adv && Array.isArray(adv.rows)) ? adv.rows : [];
+  const attTb = $('#tblAttendanceBody'); if(attTb){
+    if (!attRows.length) attTb.innerHTML = `<tr><td colspan="4" class="text-secondary p-4">No data.</td></tr>`;
+    else attTb.innerHTML = attRows.map(r=>`<tr><td>${(r.dateISO||'').slice(0,10)} ${(r.time||'').slice(11,16)}</td><td>${r.employee||''}</td><td>${r.action||''}</td><td>${r.note||''}</td></tr>`).join('');
+  }
+  const mixTb = $('#tblEmpTransBody'); if(mixTb){
+    const mix = purRows.map(r=>({type:'Purchase', ...r})).concat(advRows.map(r=>({type:'Advance', ...r})));
+    if (!mix.length) mixTb.innerHTML = `<tr><td colspan="5" class="text-secondary p-4">No data.</td></tr>`;
+    else mixTb.innerHTML = mix.sort((a,b)=> (a.dateISO||'').localeCompare(b.dateISO||'')).map(r=>`<tr><td>${(r.dateISO||'').slice(0,10)}</td><td>${r.type}</td><td>${r.employee||''}</td><td class="text-end">${Number(r.amount||0).toFixed(2)}</td><td>${r.note||''}</td></tr>`).join('');
+  }
+}
+
+// Form handlers
+$('#formEmployee')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  const res = await api('/api/employees/add',{ method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ showToast('Employee saved'); e.target.reset(); loadEmployees(); } else showToast(res.error||'Failed', false);
+});
+
+$('#formAttendance')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  // add current time if not provided
+  if(!body.time) body.time = new Date().toISOString();
+  const res = await api('/api/attendance/add',{ method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ showToast('Attendance recorded'); e.target.reset(); loadEmployees(); } else showToast(res.error||'Failed', false);
+});
+
+$('#formEmpPurchase')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  const res = await api('/api/emp_purchases/add',{ method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ showToast('Purchase saved'); e.target.reset(); loadEmployees(); } else showToast(res.error||'Failed', false);
+});
+$('#formEmpAdvance')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target).entries());
+  const res = await api('/api/emp_advances/add',{ method:'POST', body: JSON.stringify(body) });
+  if(res.ok){ showToast('Advance saved'); e.target.reset(); loadEmployees(); } else showToast(res.error||'Failed', false);
+});
+
+
+
+// UI sanity check: ensure every nav target has a matching section
+document.addEventListener('DOMContentLoaded', ()=>{
+  $$('#mainNav [data-bs-target]').forEach(btn=>{
+    const tgt = btn.getAttribute('data-bs-target');
+    if (tgt && !document.querySelector(tgt)){
+      console.warn('Missing section for', tgt);
+      showToast('⚠️ Missing section for '+tgt, false);
+    }
+  });
+});
+
 /* ---------- Boot ---------- */
 document.addEventListener('DOMContentLoaded', ()=>{
   // default dates
@@ -422,7 +500,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadDenoms();
 
   // load lists initially
-  loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); runReport();
+  loadSales(); loadExpenses(); loadCredit(); loadOrders(); loadCash(); loadEmployees?.(); runReport?.();
 });
 $('#btnRunReport')?.addEventListener('click', runReport);
 
