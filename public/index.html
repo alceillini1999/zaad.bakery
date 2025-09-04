@@ -47,8 +47,7 @@
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCredit" type="button"><i class="bi bi-people"></i> Credit</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabOrders" type="button"><i class="bi bi-bag-check"></i> Orders</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCash" type="button"><i class="bi bi-cash-stack"></i> Cash Count</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports"</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabStaff" type="button"><i class="bi bi-person-badge"></i> Employees</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabStaff" type="button"><i class="bi bi-person-badge"></i> Employees</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabReports" type="button"><i class="bi bi-graph-up"></i> Reports</button></li>
       </ul>
 
@@ -341,6 +340,64 @@
           </div>
         </section>
 
+
+        <!-- EMPLOYEES -->
+        <section class="tab-pane fade" id="tabStaff">
+          <div class="row g-4">
+            <div class="col-lg-5">
+              <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-person-badge"></i> Add Employee</div>
+                <div class="card-body">
+                  <form id="formEmployee" class="vstack gap-3">
+                    <div>
+                      <label class="form-label">Name</label>
+                      <input class="form-control" name="name" list="dlEmployeesFixed" placeholder="Type or choose…">
+                    </div>
+                    <div><label class="form-label">Phone</label><input class="form-control" name="phone" placeholder="+254…"></div>
+                    <div><label class="form-label">Note</label><textarea class="form-control" name="note" rows="2"></textarea></div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
+                  </form>
+                  <datalist id="dlEmployeesFixed">
+                    <option>darmin</option><option>veromica</option><option>shangel</option>
+                    <option>mary</option><option>farida</option><option>roth</option>
+                    <option>walled</option><option>ahmed</option>
+                  </datalist>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-7">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold">Attendance / Purchases / Advances</div>
+                <div class="card-body vstack gap-3">
+                  <form id="formAttendance" class="row g-2 align-items-end">
+                    <div class="col-6"><label class="form-label">Employee</label><select id="attEmployee" class="form-select"></select></div>
+                    <div class="col-6 d-flex gap-2">
+                      <button class="btn btn-outline-primary flex-fill" data-action="checkin" type="button"><i class="bi bi-box-arrow-in-right"></i> Check-in</button>
+                      <button class="btn btn-outline-success flex-fill" data-action="checkout" type="button"><i class="bi bi-box-arrow-right"></i> Check-out</button>
+                    </div>
+                  </form>
+                  <form id="formEmpPurchase" class="row g-2">
+                    <div class="col-5"><label class="form-label">Employee</label><select id="purEmployee" class="form-select"></select></div>
+                    <div class="col-4"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
+                    <div class="col-3 d-grid"><button class="btn btn-outline-secondary" type="submit">Add Purchase</button></div>
+                  </form>
+                  <form id="formEmpAdvance" class="row g-2">
+                    <div class="col-5"><label class="form-label">Employee</label><select id="advEmployee" class="form-select"></select></div>
+                    <div class="col-4"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
+                    <div class="col-3 d-grid"><button class="btn btn-outline-secondary" type="submit">Add Advance</button></div>
+                  </form>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0">
+                    <thead class="table-light"><tr><th>Date</th><th>Type</th><th>Employee</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody id="tblEmployees"><tr><td colspan="4" class="text-secondary p-4">No data.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+    
         <!-- REPORTS -->
         <section class="tab-pane fade" 
 id="tabReports">
@@ -457,5 +514,27 @@ id="tabReports">
       </div>
     </div>
   </div>
+
+  <script>
+    function preflightTabs(){
+      try{
+        const targets = new Set();
+        document.querySelectorAll('[data-bs-target^="#"]').forEach(b=>{
+          const id=b.getAttribute('data-bs-target');
+          if(!document.querySelector(id)){
+            console.warn('⚠️ Missing section for', id);
+            b.classList.add('disabled');
+          }
+          targets.add(id);
+        });
+        document.querySelectorAll('main section[id^="tab"]').forEach(sec=>{
+          const id='#'+sec.id;
+          if(!targets.has(id)) console.warn('ℹ️ Section without tab:', id);
+        });
+      }catch(e){console.warn('Preflight error:', e);}
+    }
+    document.addEventListener('DOMContentLoaded', preflightTabs);
+  </script>
+
 </body>
 </html>
