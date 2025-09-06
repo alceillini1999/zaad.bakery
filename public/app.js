@@ -29,6 +29,9 @@ function badgeFor(method){
   return `<span class="badge badge-method badge-Cash">Cash</span>`;
 }
 
+
+// --- Fixed employee names (fallback for selects; merged with server list) ---
+const FIXED_EMPLOYEES = ['darmin','veromica','shangel','mary','farida','roth','walled','ahmed'];
 /* ---------- SALES (بدون Product/Qty/Unit) ---------- */
 async function loadSales(){
   const p=new URLSearchParams();
