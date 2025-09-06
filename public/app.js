@@ -29,9 +29,6 @@ function badgeFor(method){
   return `<span class="badge badge-method badge-Cash">Cash</span>`;
 }
 
-
-// --- Fixed employee names (fallback for selects) ---
-const FIXED_EMPLOYEES = ['darmin','veromica','shangel','mary','farida','roth','walled','ahmed'];
 /* ---------- SALES (بدون Product/Qty/Unit) ---------- */
 async function loadSales(){
   const p=new URLSearchParams();
@@ -430,14 +427,8 @@ async function loadEmployees(){
     else tb.innerHTML = rows.map(r=>`<tr><td>${r.name||''}</td><td>${r.phone||''}</td><td>${r.note||''}</td></tr>`).join('');
   }
   // fill selects
-    // merge server employees with fixed fallback list
-  const names = Array.from(new Set([
-    ...FIXED_EMPLOYEES,
-    ...rows.map(r => (r.name||'').trim())
-  ].filter(Boolean)));
-  const opts = names.map(n=>`<option value="${n.replace(/\"/g,'&quot;')}">${n}</option>`).join('');
+  const opts = rows.map(r=>`<option value="${(r.name||'').replace(/"/g,'&quot;')}">${r.name||''}</option>`).join('');
   ['attEmployee','purEmployee','advEmployee'].forEach(id=>{ const el=$('#'+id); if(el) el.innerHTML=opts; });
-#'+id); if(el) el.innerHTML=opts; });
   // load attendance/purchases/advances tables
   const todayQ = new URLSearchParams({ from: today(), to: today() }).toString();
   const [att, pur, adv] = await Promise.all([
@@ -577,42 +568,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $('#manualOut')?.addEventListener('input', updateCashTotalManual);
   toggleCashMode();
 });
-
-/* ===== Employees safe fallback (append-only) =====
-   - Fills Employee selects in Attendance/Purchases/Advances
-     with fixed names + any names returned by the server.
-   - Does not rename or remove any existing code; safe addition only.
-==================================================== */
-(function(){
-  window.FIXED_EMPLOYEES = window.FIXED_EMPLOYEES || [
-    'darmin','veromica','shangel','mary','farida','roth','walled','ahmed'
-  ];
-  function __fillEmpSelects(names){
-    try{
-      const uniq = Array.from(new Set((names||[]).filter(Boolean)));
-      const opts = uniq.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
-      ['attEmployee','purEmployee','advEmployee'].forEach(id=>{
-        const el = document.getElementById(id);
-        if(el && (!el.options || el.options.length===0)) el.innerHTML = opts;
-      });
-    }catch(e){ console.warn('emp fill err', e); }
-  }
-  function __fillEmpSelectsFallback(extraRows){
-    const serverNames = (extraRows||[]).map(r => (r && (r.name||r.employee||'')).toString().trim()).filter(Boolean);
-    const names = [...window.FIXED_EMPLOYEES, ...serverNames];
-    __fillEmpSelects(names);
-  }
-  document.addEventListener('DOMContentLoaded', ()=>__fillEmpSelectsFallback());
-  const __oldLoadEmployees = (typeof window.loadEmployees==='function') ? window.loadEmployees : null;
-  if (__oldLoadEmployees){
-    window.loadEmployees = async function(){
-      const res = await __oldLoadEmployees();
-      try{
-        const rows = window.__EMP_ROWS__ || window.employees || window.EMPLOYEES || [];
-        __fillEmpSelectsFallback(rows);
-      }catch(e){ __fillEmpSelectsFallback(); }
-      return res;
-    };
-  }
-})();
 
