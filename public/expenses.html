@@ -42,63 +42,66 @@
       </ul>
     </div>
 <main class="py-4"><div class="container">
-<section class="tab-pane active show active" id="tabSales">
+<section class="tab-pane active" id="tabExpenses">
           <div class="row g-4">
             <div class="col-lg-4">
               <div class="card h-100">
-                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Expense</div>
                 <div class="card-body">
-                  <!-- طلبك: إزالة Product / Quantity / Unit Price / Till Number -->
-                  <form id="formSale" class="vstack gap-3">
+                  <form id="formExpense" class="vstack gap-3" enctype="multipart/form-data">
                     <div>
-                      <label class="form-label">Payment Method</label>
-                      <select class="form-select" name="method">
-                        <option>Cash</option>
-                        <option>Till No</option>
-                        <option>Withdrawal</option>
-                        <option>Send Money</option>
-                      </select>
+                      <label class="form-label">Item</label>
+                      <input class="form-control" name="item" placeholder="e.g., Flour">
                     </div>
+                    <div class="row g-2">
+                      <div class="col">
+                        <label class="form-label">Amount</label>
+                        <input class="form-control" name="amount" type="number" min="0" step="0.01">
+                      </div>
+                      <div class="col">
+                        <label class="form-label">Payment</label>
+                        <select class="form-select" name="method">
+                          <option>Cash</option><option>Withdrawal</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- طلبك: رفع صورة فاتورة -->
                     <div>
-                      <label class="form-label">Amount</label>
-                      <input class="form-control" name="amount" placeholder="0.00" type="number" min="0" step="0.01" required>
+                      <label class="form-label">Receipt Photo (optional)</label>
+                      <input class="form-control" type="file" name="receipt" accept="image/*">
                     </div>
+
                     <div>
                       <label class="form-label">Note</label>
-                      <textarea class="form-control" rows="2" name="note" placeholder="Notes…"></textarea>
+                      <textarea class="form-control" name="note" rows="2"></textarea>
                     </div>
-                    <div class="d-grid gap-2">
-                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Sale</button>
-                      <button class="btn btn-outline-secondary" type="reset">Clear</button>
+                    <div class="d-grid">
+                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Expense</button>
                     </div>
                   </form>
-                  <div class="small text-secondary mt-2"><i class="bi bi-lightning-charge"></i> Shortcut: Alt+S</div>
                 </div>
               </div>
             </div>
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                  <span class="fw-semibold">Sales — Today</span>
-                  <div class="d-flex gap-2">
-                    <input type="date" class="form-control form-control-sm" id="salesFrom">
-                    <input type="date" class="form-control form-control-sm" id="salesTo">
-                    <select id="salesMethod" class="form-select form-select-sm">
-                      <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
-                    </select>
-                    <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
-                    <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
-                  </div>
+                <!-- Add filters: from/to and method -->
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                  <span>Expenses</span>
+                  <input type="date" class="form-control form-control-sm ms-auto" id="expFrom">
+                  <input type="date" class="form-control form-control-sm" id="expTo">
+                  <select id="expMethod" class="form-select form-select-sm" style="max-width:160px">
+                    <option value="">All</option>
+                    <option>Cash</option>
+                    <option>Withdrawal</option>
+                  </select>
+                  <button id="btnExpFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
                 </div>
                 <div class="table-responsive">
-                  <table class="table table-hover align-middle mb-0" id="tblSales">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Date</th><th class="text-end">Amount</th><th>Method</th><th>Note</th>
-                      </tr>
-                    </thead>
-                    <tbody id="tblSalesBody"><tr><td colspan="4" class="text-secondary p-4">No data.</td></tr></tbody>
+                  <table class="table table-hover align-middle mb-0" id="tblExp">
+                    <thead class="table-light"><tr><th>Date</th><th>Item</th><th class="text-end">Amount</th><th>Method</th><th>Receipt</th><th>Note</th></tr></thead>
+                    <tbody id="tblExpensesBody"><tr><td colspan="6" class="text-secondary p-4">No data.</td></tr></tbody>
                   </table>
                 </div>
               </div>

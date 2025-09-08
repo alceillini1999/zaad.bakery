@@ -42,66 +42,19 @@
       </ul>
     </div>
 <main class="py-4"><div class="container">
-<section class="tab-pane active show active" id="tabSales">
-          <div class="row g-4">
-            <div class="col-lg-4">
-              <div class="card h-100">
-                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
-                <div class="card-body">
-                  <!-- طلبك: إزالة Product / Quantity / Unit Price / Till Number -->
-                  <form id="formSale" class="vstack gap-3">
-                    <div>
-                      <label class="form-label">Payment Method</label>
-                      <select class="form-select" name="method">
-                        <option>Cash</option>
-                        <option>Till No</option>
-                        <option>Withdrawal</option>
-                        <option>Send Money</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="form-label">Amount</label>
-                      <input class="form-control" name="amount" placeholder="0.00" type="number" min="0" step="0.01" required>
-                    </div>
-                    <div>
-                      <label class="form-label">Note</label>
-                      <textarea class="form-control" rows="2" name="note" placeholder="Notes…"></textarea>
-                    </div>
-                    <div class="d-grid gap-2">
-                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Sale</button>
-                      <button class="btn btn-outline-secondary" type="reset">Clear</button>
-                    </div>
-                  </form>
-                  <div class="small text-secondary mt-2"><i class="bi bi-lightning-charge"></i> Shortcut: Alt+S</div>
-                </div>
-              </div>
+<section class="tab-pane active" 
+id="tabReports">
+          <div class="card mb-4">
+            <div class="card-header bg-white fw-semibold d-flex flex-wrap gap-2 align-items-center">
+              <span>Filters</span>
+              <input type="date" class="form-control form-control-sm" id="repFrom">
+              <input type="date" class="form-control form-control-sm" id="repTo">
+              <button id="btnRunReport" class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i> Run</button>
+              <a class="btn btn-sm btn-outline-secondary ms-auto" id="btnPDF" href="#"><i class="bi bi-filetype-pdf"></i> PDF</a>
             </div>
-
-            <div class="col-lg-8">
-              <div class="card">
-                <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                  <span class="fw-semibold">Sales — Today</span>
-                  <div class="d-flex gap-2">
-                    <input type="date" class="form-control form-control-sm" id="salesFrom">
-                    <input type="date" class="form-control form-control-sm" id="salesTo">
-                    <select id="salesMethod" class="form-select form-select-sm">
-                      <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
-                    </select>
-                    <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
-                    <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
-                  </div>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-hover align-middle mb-0" id="tblSales">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Date</th><th class="text-end">Amount</th><th>Method</th><th>Note</th>
-                      </tr>
-                    </thead>
-                    <tbody id="tblSalesBody"><tr><td colspan="4" class="text-secondary p-4">No data.</td></tr></tbody>
-                  </table>
-                </div>
-              </div>
+            <div class="card-body">
+              <div class="row g-3" id="repCards"></div>
+              <canvas id="salesByMethodChart" height="120" class="mt-4"></canvas>
             </div>
           </div>
         </section>

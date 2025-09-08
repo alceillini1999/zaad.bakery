@@ -42,63 +42,55 @@
       </ul>
     </div>
 <main class="py-4"><div class="container">
-<section class="tab-pane active show active" id="tabSales">
+<section class="tab-pane active" id="tabCredit">
           <div class="row g-4">
             <div class="col-lg-4">
               <div class="card h-100">
-                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Record a Sale</div>
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-plus-circle"></i> Add Credit</div>
                 <div class="card-body">
-                  <!-- طلبك: إزالة Product / Quantity / Unit Price / Till Number -->
-                  <form id="formSale" class="vstack gap-3">
+                  <form id="formCredit" class="vstack gap-3">
                     <div>
-                      <label class="form-label">Payment Method</label>
-                      <select class="form-select" name="method">
-                        <option>Cash</option>
-                        <option>Till No</option>
-                        <option>Withdrawal</option>
-                        <option>Send Money</option>
-                      </select>
+                      <label class="form-label">Customer</label>
+                      <input class="form-control" list="dlCustomers" name="customer" placeholder="Select / type…">
+                      <datalist id="dlCustomers">
+                        <option>Bakkal</option><option>Azza</option><option>Habib</option><option>Snack attack</option>
+                        <option>Crave</option><option>Popa tea</option><option>Chopit</option><option>Freez</option><option>Malaki</option>
+                      </datalist>
                     </div>
                     <div>
-                      <label class="form-label">Amount</label>
-                      <input class="form-control" name="amount" placeholder="0.00" type="number" min="0" step="0.01" required>
+                      <label class="form-label">Item</label>
+                      <input class="form-control" name="item" placeholder="e.g., Box">
                     </div>
-                    <div>
-                      <label class="form-label">Note</label>
-                      <textarea class="form-control" rows="2" name="note" placeholder="Notes…"></textarea>
+                    <div class="row g-2">
+                      <div class="col"><label class="form-label">Amount</label><input class="form-control" name="amount" type="number" step="0.01"></div>
+                      <div class="col"><label class="form-label">Paid</label><input class="form-control" name="paid" type="number" step="0.01" value="0"></div>
                     </div>
-                    <div class="d-grid gap-2">
-                      <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Sale</button>
-                      <button class="btn btn-outline-secondary" type="reset">Clear</button>
-                    </div>
+                    <div><label class="form-label">Note</label><textarea class="form-control" rows="2" name="note"></textarea></div>
+                    <div class="d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save</button></div>
                   </form>
-                  <div class="small text-secondary mt-2"><i class="bi bi-lightning-charge"></i> Shortcut: Alt+S</div>
                 </div>
               </div>
             </div>
 
             <div class="col-lg-8">
               <div class="card">
-                <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                  <span class="fw-semibold">Sales — Today</span>
-                  <div class="d-flex gap-2">
-                    <input type="date" class="form-control form-control-sm" id="salesFrom">
-                    <input type="date" class="form-control form-control-sm" id="salesTo">
-                    <select id="salesMethod" class="form-select form-select-sm">
-                      <option value="">All</option><option>Cash</option><option>Till No</option><option>Withdrawal</option><option>Send Money</option>
-                    </select>
-                    <button id="btnSalesFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
-                    <a id="btnSalesExport" class="btn btn-sm btn-outline-success" href="#"><i class="bi bi-filetype-csv"></i> Export CSV</a>
-                  </div>
+                <!-- Add filters for credit: from/to and customer -->
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                  <span>Credit</span>
+                  <input type="date" class="form-control form-control-sm ms-auto" id="crFrom">
+                  <input type="date" class="form-control form-control-sm" id="crTo">
+                  <input type="text" class="form-control form-control-sm" id="crCustomer" placeholder="Customer…" style="max-width:180px">
+                  <button id="btnCrFilter" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter"></i> Filter</button>
+                  <!-- Keep record payment button aligned to end -->
+                  <button class="btn btn-outline-primary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin"></i> Record Payment</button>
                 </div>
                 <div class="table-responsive">
-                  <table class="table table-hover align-middle mb-0" id="tblSales">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Date</th><th class="text-end">Amount</th><th>Method</th><th>Note</th>
-                      </tr>
-                    </thead>
-                    <tbody id="tblSalesBody"><tr><td colspan="4" class="text-secondary p-4">No data.</td></tr></tbody>
+                  <table class="table table-hover align-middle mb-0" id="tblCr">
+                    <thead class="table-light"><tr>
+                      <th>Date</th><th>Customer</th><th>Item</th>
+                      <th class="text-end">Amount</th><th class="text-end">Paid</th><th class="text-end">Remaining</th><th>Action</th>
+                    </tr></thead>
+                    <tbody id="tblCreditBody"><tr><td colspan="7" class="text-secondary p-4">No data.</td></tr></tbody>
                   </table>
                 </div>
               </div>
