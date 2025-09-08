@@ -1,18 +1,16 @@
 <!doctype html>
-    <html lang="en">
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>Zaad Bakery — Sales & Cash Manager</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-      <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-      <link href="/style.css" rel="stylesheet">
-      <link rel="icon" href="/img/zaad-logo.jpeg">
-    </head>
-    <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Reports — Zaad Bakery</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="icon" href="/img/zaad-logo.jpeg">
+  <style>body{font-family:system-ui,Arial,sans-serif;}</style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2" href="#">
         <img src="/img/zaad-logo.jpeg" alt="Zaad" width="36" height="36" class="rounded">
@@ -29,20 +27,20 @@
       </div>
     </div>
   </nav>
-<div class="container mt-3">
-      <ul class="nav nav-pills gap-2 flex-wrap" id="pageNav">
-        <li class="nav-item"><a class="nav-link" href="/index.html"><i class="bi bi-cash-coin"></i> Sales</a></li>
-        <li class="nav-item"><a class="nav-link" href="/expenses.html"><i class="bi bi-receipt"></i> Expenses</a></li>
-        <li class="nav-item"><a class="nav-link" href="/credit.html"><i class="bi bi-people"></i> Credit</a></li>
-        <li class="nav-item"><a class="nav-link" href="/orders.html"><i class="bi bi-bag-check"></i> Orders</a></li>
-        <li class="nav-item"><a class="nav-link" href="/cash.html"><i class="bi bi-cash-stack"></i> Cash</a></li>
-        <li class="nav-item"><a class="nav-link" href="/employees.html"><i class="bi bi-person-badge"></i> Employees</a></li>
-        <li class="nav-item"><a class="nav-link" href="/reports.html"><i class="bi bi-graph-up"></i> Reports</a></li>
-        <li class="nav-item ms-auto"><a class="nav-link" href="/invoice.html"><i class="bi bi-receipt"></i> Invoices</a></li>
-      </ul>
-    </div>
-<main class="py-4"><div class="container">
-<section class="tab-pane active" 
+  <div class="container mt-3">
+    <ul class="nav nav-pills gap-2 flex-wrap">
+      <li class="nav-item"><a class="nav-link" href="/index.html"><i class="bi bi-cash-coin"></i> Sales</a></li>
+      <li class="nav-item"><a class="nav-link" href="/expenses.html"><i class="bi bi-receipt"></i> Expenses</a></li>
+      <li class="nav-item"><a class="nav-link" href="/credit.html"><i class="bi bi-people"></i> Credit</a></li>
+      <li class="nav-item"><a class="nav-link" href="/orders.html"><i class="bi bi-bag-check"></i> Orders</a></li>
+      <li class="nav-item"><a class="nav-link" href="/cash.html"><i class="bi bi-cash-stack"></i> Cash</a></li>
+      <li class="nav-item"><a class="nav-link" href="/employees.html"><i class="bi bi-person-badge"></i> Employees</a></li>
+      <li class="nav-item"><a class="nav-link active" href="/reports.html"><i class="bi bi-graph-up"></i> Reports</a></li>
+    </ul>
+  </div>
+
+  <main class="py-4"><div class="container">
+    <section class="tab-pane active" 
 id="tabReports">
           <div class="card mb-4">
             <div class="card-header bg-white fw-semibold d-flex flex-wrap gap-2 align-items-center">
@@ -58,102 +56,44 @@ id="tabReports">
             </div>
           </div>
         </section>
-</div></main>
-<!-- Toast container -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
-      <div id="appToast" class="toast text-bg-success align-items-center border-0" role="alert" aria-live="polite" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body"></div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
-    </div>
-<div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-cash-coin"></i> Record Credit Payment</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form id="formPay" class="modal-body vstack gap-3">
-          <div>
-            <label class="form-label">Customer</label>
-            <input class="form-control" name="customer" placeholder="Customer" readonly>
-          </div>
-          <div>
-            <label class="form-label">Paid Amount</label>
-            <input class="form-control" name="paid" type="number" min="0" step="0.01" placeholder="0.00" required>
-          </div>
-          <div>
-            <label class="form-label">Payment Method</label>
-            <select class="form-select" name="method" required>
-              <option>Cash</option>
-              <option>Till No</option>
-              <option>Withdrawal</option>
-              <option>Send Money</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Note</label>
-            <textarea class="form-control" name="note" rows="2" placeholder="Optional"></textarea>
-          </div>
-          <div class="modal-footer px-0">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Payment</button>
-          </div>
-        </form>
+  </div></main>
+
+  <!-- Toast (for app.js showToast calls) -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+    <div id="appToast" class="toast text-bg-success align-items-center border-0" role="alert" aria-live="polite" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
   </div>
-<div class="modal fade" id="orderPayModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-bag-check"></i> Pay Order</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form id="formOrderPay" class="modal-body vstack gap-3">
-          <input type="hidden" id="opId">
-          <div class="row g-2">
-            <div class="col-6">
-              <label class="form-label">Client Phone</label>
-              <input class="form-control" id="opPhone" readonly>
-            </div>
-            <div class="col-6">
-              <label class="form-label">Item</label>
-              <input class="form-control" id="opItem" readonly>
-            </div>
-          </div>
-          <div class="row g-2">
-            <div class="col-6">
-              <label class="form-label">Remaining</label>
-              <input class="form-control" id="opRemaining" readonly>
-            </div>
-            <div class="col-6">
-              <label class="form-label">Pay Amount</label>
-              <input class="form-control" id="opAmount" type="number" min="0" step="0.01" required>
-            </div>
-          </div>
-          <div>
-            <label class="form-label">Payment Method</label>
-            <select class="form-select" id="opMethod" required>
-              <option>Cash</option>
-              <option>Till No</option>
-              <option>Withdrawal</option>
-              <option>Send Money</option>
-            </select>
-          </div>
-          <div class="modal-footer px-0">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-      <script src="/socket.io/socket.io.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-      <script src="/app.js"></script>
-    </body>
-    </html>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/app.js"></script>
+
+  <!-- Auto-run the report safely on page load -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      try {
+        // Ensure date inputs have defaults like the original boot logic
+        if (document.getElementById('repFrom') && !document.getElementById('repFrom').value) {
+          const d=new Date(); const pad=n=>String(n).padStart(2,'0');
+          const today=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+          document.getElementById('repFrom').value=today;
+        }
+        if (document.getElementById('repTo') && !document.getElementById('repTo').value) {
+          document.getElementById('repTo').value=document.getElementById('repFrom').value;
+        }
+      } catch(e) { /* ignore */ }
+    });
+    window.addEventListener('load', function () {
+      // runReport is defined globally in app.js (non-module); call it if present
+      if (typeof window.runReport === 'function') {
+        window.runReport().catch(()=>{});
+      }
+    });
+  </script>
+</body>
+</html>
