@@ -1,0 +1,39 @@
+
+/* Zaad — Cream & Gold (Light) */
+.report-page {
+  --c-bg1: #fffaf2;
+  --c-bg2: #f6efe4;
+  --c-accent: #c89a60;
+  --c-accent-2: #e0b86b;
+  --c-text: #3b2a20;
+  --c-border: rgba(200,154,96,0.25);
+  position: relative;
+  padding: 14px;
+  border-radius: 20px;
+  background:
+    radial-gradient(800px 400px at -10% -10%, var(--c-bg2) 0%, transparent 45%),
+    radial-gradient(800px 400px at 110% 10%, #fff6e8 0%, transparent 45%),
+    linear-gradient(180deg, var(--c-bg1) 0%, #ffffff 60%);
+  color: var(--c-text);
+}
+.report-page .card, .report-page .notice, .report-page .table, .report-page .alert {
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(200,154,96,0.10);
+}
+.report-page .table thead th {
+  background: rgba(232, 205, 160, 0.25);
+  color: #4a3527;
+  border-bottom: 1px solid var(--c-border);
+}
+.report-page .btn-primary {
+  background: linear-gradient(90deg, var(--c-accent), var(--c-accent-2));
+  border: none; color: #fff;
+}
+.report-page.logo-mark::after {
+  content: ""; position: absolute; right: 36px; bottom: 36px; width: 180px; height: 180px;
+  background: url('/img/zaad-logo.jpeg') center/contain no-repeat;
+  opacity: .07; pointer-events: none;
+}
