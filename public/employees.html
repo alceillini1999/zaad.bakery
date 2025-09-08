@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Employees — Attendance (Check‑in/Check‑out) + Advances</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b1220; --card:#0f172a; --muted:#94a3b8; --acc:#22c55e; --danger:#ef4444; }
+    *{box-sizing:border-box}
+    body{font-family:"Cairo", system-ui, sans-serif; margin:0; background:var(--bg); color:#e5e7eb}
+    header{position:sticky; top:0; background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.8)); border-bottom:1px solid #1f2937; padding:12px 16px; display:flex; gap:8px; align-items:center}
+    h1{font-size:20px;margin:0;font-weight:700}
+    main{max-width:1100px; margin:24px auto; padding:0 16px; display:grid; gap:20px}
+    .card{background:var(--card); border:1px solid #1f2937; border-radius:16px; padding:16px}
+    .title{font-weight:700; font-size:18px; margin-bottom:8px}
+    .desc{color:#9ca3af; font-size:14px; margin-bottom:12px}
+    .grid{display:grid; gap:10px}
+    .grid.cols-3{grid-template-columns:repeat(3, minmax(0,1fr))}
+    .grid.cols-2{grid-template-columns:repeat(2, minmax(0,1fr))}
+    label{font-size:14px; color:#cbd5e1}
+    select,input,textarea{width:100%; background:#0b1220; color:#e5e7eb; border:1px solid #273244; border-radius:10px; padding:10px; font-family:inherit}
+    textarea{min-height:80px; resize:vertical}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    button{border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700}
+    .primary{background:var(--acc); color:#052e16}
+    .ghost{background:transparent; border:1px solid #334155; color:#cbd5e1}
+    .danger{background:var(--danger); color:#450a0a}
+    table{width:100%; border-collapse:collapse;}
+    th,td{padding:10px; border-bottom:1px dashed #22304a; text-align:left; font-size:14px}
+    th{color:#93c5fd; font-weight:700}
+    .muted{color:#94a3b8}
+    .tag{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #334155}
+    .tag.morning{color:#34d399; border-color:#14532d}
+    .tag.evening{color:#60a5fa; border-color:#1e3a8a}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📋 Employees — Attendance (Check‑in/Check‑out) + Advances</h1>
+    <a class="tag" href="/" style="margin-left:auto">Back to Home</a>
+  </header>
+  <main>
+    <!-- Part 1: Attendance -->
+    <section class="card">
+      <div class="title">Part 1: Attendance</div>
+      <div class="desc">Pick the employee, choose the session (Morning/Evening), then enter the time. The table below shows the selected day. Overtime is calculated automatically when both check‑in and check‑out exist for the same day.</div>
+
+      <div class="grid cols-3">
+        <div>
+          <label>Employee</label>
+          <select id="att-employee"></select>
+        </div>
+        <div>
+          <label>Session</label>
+          <select id="att-session">
+            <option value="morning">Morning</option>
+            <option value="evening">Evening</option>
+          </select>
+        </div>
+        <div>
+          <label>Time</label>
+          <input type="time" id="att-time" />
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:12px">
+        <button class="primary" id="btn-save-att">Save Attendance</button>
+        <button class="ghost" id="btn-refresh-att">Refresh Log</button>
+      </div>
+
+      <div class="grid cols-2" style="margin-top:12px">
+        <div>
+          <label>Displayed day</label>
+          <input type="date" id="att-date" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="ghost" id="btn-today">Today</button>
+        </div>
+      </div>
+
+      <div class="muted" style="margin-top:6px">
+        Overtime = (Check‑out − Check‑in) − 8 hours (this base can be changed on the server).
+      </div>
+
+      <h3 style="margin:16px 0 8px">Day log</h3>
+      <table id="tbl-att">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Session</th>
+            <th>Check‑in</th>
+            <th>Check‑out</th>
+            <th>Overtime (min)</th>
+            <th>Last update</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Part 2: Advances -->
+    <section class="card">
+      <div class="title">Part 2: Advances</div>
+      <div class="desc">Record cash advances taken by employees, with a note.</div>
+
+      <div class="grid cols-3">
+        <div>
+          <label>Employee</label>
+          <select id="adv-employee"></select>
+        </div>
+        <div>
+          <label>Advance amount (KSh)</label>
+          <input type="number" id="adv-amount" min="0" step="1" placeholder="0" />
+        </div>
+        <div>
+          <label>Note</label>
+          <input type="text" id="adv-note" placeholder="Reason (optional)" />
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:12px">
+        <button class="primary" id="btn-save-adv">Save Advance</button>
+        <button class="ghost" id="btn-refresh-adv">Refresh Advances</button>
+      </div>
+
+      <div class="grid cols-2" style="margin-top:12px">
+        <div>
+          <label>Displayed day</label>
+          <input type="date" id="adv-date" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="ghost" id="btn-adv-today">Today</button>
+        </div>
+      </div>
+
+      <h3 style="margin:16px 0 8px">Advances (day)</h3>
+      <table id="tbl-adv">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Amount</th>
+            <th>Note</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Place this as public/employees.html and the script as public/js/employees.js (or rename to .en.js accordingly) -->
+  <script src="/js/employees.en.js"></script>
+</body>
+</html>
