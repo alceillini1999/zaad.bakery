@@ -40,17 +40,20 @@ const UPLOAD_DIR   = path.join(__dirname, 'public', 'uploads', 'receipts');
 const INVOICE_DIR  = path.join(__dirname, 'public', 'invoices');
 
 const FILES = {
-  sales:            path.join(DATA_DIR, 'sales.jsonl'),
+sales:            path.join(DATA_DIR, 'sales.jsonl'),
   expenses:         path.join(DATA_DIR, 'expenses.jsonl'),
   credits:          path.join(DATA_DIR, 'credits.jsonl'),
   credit_payments:  path.join(DATA_DIR, 'credit_payments.jsonl'),
   orders:           path.join(DATA_DIR, 'orders.jsonl'),
   orders_status:    path.join(DATA_DIR, 'orders_status.jsonl'),
   orders_payments:  path.join(DATA_DIR, 'orders_payments.jsonl'),
-  cash:             path.join(DATA_DIR, 'cash.jsonl'),
+  cash:             path.join(DATA_DIR, 'cash.jsonl'),  employees:             path.join(DATA_DIR, 'employees.jsonl'),
+  attendance:             path.join(DATA_DIR, 'attendance.jsonl'),
+  emp_purchases:             path.join(DATA_DIR, 'emp_purchases.jsonl'),
+  emp_advances:             path.join(DATA_DIR, 'emp_advances.jsonl'),
 };
 
-const ALL_TYPES = ['sales','expenses','credits','cash','orders','orders_status','orders_payments','credit_payments'];
+const ALL_TYPES = ['sales','expenses','credits','cash','orders','orders_status','orders_payments','credit_payments','employees','attendance','emp_purchases','emp_advances'];
 
 // ---------- Helpers ----------
 function ensureDirs() {
@@ -146,17 +149,6 @@ function toCSV(rows) {
   return [headers.join(','), ...rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n');
 }
 const sumBy=(arr,fn)=>arr.reduce((a,x)=>a+(+fn(x)||0),0);
-// === [Employees Attendance] Settings (non-breaking) ===
-const EMPLOYEE_NAMES = ['darmin','veronica','farida','shangel','roth','mary','walled','ahmed'];
-// Default 8 hours; override with SHIFT_MINUTES env if needed
-const SHIFT_MINUTES = Number(process.env.SHIFT_MINUTES || 8*60);
-function hhmmToMinutes(str){
-  const m = /^([0-9]{1,2}):([0-9]{2})$/.exec(String(str||''));
-  if (!m) return null;
-  const h = parseInt(m[1], 10), mn = parseInt(m[2], 10);
-  return (h*60 + mn);
-}
-
 
 // ---------- Google Sheets Sync ----------
 // دعم متغيرات بديلة (GS_* كاختصار)
@@ -737,18 +729,10 @@ app.post('/api/employees/add', addEmployee);
 
 
 // ===== Attendance =====
-
-const addAttendance = handleAdd('attendance', b=>{
-  const sess = b.session || (/out|مساء|even/i.test(b.action||'') ? 'evening' : 'morning');
-  return {
-    employee: b.employee||'',
-    session: sess,
-    action: (b.action || (sess==='evening'?'check_out':'check_in')),
-    time: b.time||'',
-    note: b.note||''
-  };
-});
+const addAttendance = handleAdd('attendance', b=>({ employee:b.employee||'', action:(b.action||'check_in'), time:b.time||'', note:b.note||'' }));
 app.post('/api/attendance/add', addAttendance);
+
+
 // ===== Employee Purchases =====
 const addEmpPurchase = handleAdd('emp_purchases', b=>({ employee:b.employee||'', item:b.item||'', amount:normNum(b.amount||0), paid:normNum(b.paid||0), note:b.note||'' }));
 app.post('/api/emp_purchases/add', addEmpPurchase);
@@ -758,6 +742,11 @@ app.post('/api/emp_purchases/add', addEmpPurchase);
 const addEmpAdvance = handleAdd('emp_advances', b=>({ employee:b.employee||'', amount:normNum(b.amount||0), paid:normNum(b.paid||0), note:b.note||'' }));
 app.post('/api/emp_advances/add', addEmpAdvance);
 
+
+// --- Employees: fixed names list (for UI dropdown) ---
+app.get('/api/employees/names', (req,res)=>{
+  res.json(['darmin','veronica','farida','shangel','roth','mary','walled','ahmed']);
+});
 // ===== Generic list =====
 app.get('/api/:type/list', async (req,res)=>{
   try{
@@ -934,80 +923,6 @@ app.get('/api/sheets/health', async (req, res) => {
     res.json({ ok:true, title: meta.data.properties.title, sheets: (meta.data.sheets||[]).map(s=>s.properties.title) });
   } catch (e) {
     res.status(500).json({ ok:false, error: e.message });
-  }
-});
-
-
-// === [Employees] Names list (fixed) — safe addition ===
-app.get('/api/employees/names', (req,res)=>{
-  res.json(EMPLOYEE_NAMES);
-});
-
-// === [Attendance] Day summary (aggregates check-in/out into one row per employee) ===
-// GET /api/attendance/day-summary?date=YYYY-MM-DD
-app.get('/api/attendance/day-summary', async (req,res)=>{
-  try{
-    const qd = req.query.date || todayISO();
-    const rows = filterByQuery(await readAll('attendance'), { from: qd, to: qd });
-
-    // group by employee
-    const byEmp = new Map();
-    for (const r of rows){
-      const emp = (r.employee||'').trim();
-      if (!emp) continue;
-      const g = byEmp.get(emp) || { inTimes: [], outTimes: [], updatedAt: '' };
-      const tmin = hhmmToMinutes(r.time);
-      const act = (r.action||'').toLowerCase();
-      const ses = (r.session||'').toLowerCase();
-
-      if (tmin != null) {
-        if (ses === 'morning' || act.includes('check_in') || act.includes('in')) g.inTimes.push({ t: tmin, s: r.time });
-        if (ses === 'evening' || act.includes('check_out') || act.includes('out')) g.outTimes.push({ t: tmin, s: r.time });
-      }
-      const upd = r.updatedAt || r.createdAt || '';
-      if (upd && upd > g.updatedAt) g.updatedAt = upd;
-
-      byEmp.set(emp, g);
-    }
-
-    const result = [];
-    for (const [emp, g] of byEmp.entries()){
-      const inTime  = g.inTimes.length  ? g.inTimes.sort((a,b)=>a.t-b.t)[0] : null;       // earliest
-      const outTime = g.outTimes.length ? g.outTimes.sort((a,b)=>b.t-a.t)[0] : null;       // latest
-
-      let ot = 0, session_tag = '—';
-      if (inTime && outTime) {
-        const worked = outTime.t - inTime.t; // minutes
-        ot = Math.max(0, worked - SHIFT_MINUTES);
-        session_tag = 'كامل';
-      } else if (inTime) { session_tag = 'صباح'; }
-      else if (outTime) { session_tag = 'مساء'; }
-
-      result.push({
-        employee: emp,
-        dateISO: qd,
-        time_in: inTime ? inTime.s : null,
-        time_out: outTime ? outTime.s : null,
-        overtime_minutes: ot,
-        session_tag,
-        updated_at: g.updatedAt
-      });
-    }
-
-    // ensure fixed list employees appear even if no entries (optional)
-    for (const name of EMPLOYEE_NAMES){
-      if (!result.find(r => r.employee === name)){
-        result.push({ employee: name, dateISO: qd, time_in: null, time_out: null, overtime_minutes: 0, session_tag: '—', updated_at: '' });
-      }
-    }
-
-    // sort by employee name
-    result.sort((a,b)=> a.employee.localeCompare(b.employee));
-
-    res.json({ ok:true, date: qd, count: result.length, rows: result });
-  } catch(err){
-    console.error(err);
-    res.status(500).json({ ok:false, error: err.message });
   }
 });
 
