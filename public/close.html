@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>إقفال اليوم — Close Day</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="/css/zaad-theme-cream.css" rel="stylesheet">
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", Arial, sans-serif; }
+    .denom-input { max-width: 90px; }
+    .sticky-footer { position: sticky; bottom: 0; z-index: 30; }
+    .table thead th { position: sticky; top: 0; z-index: 1; }
+  </style>
+</head>
+<body>
+  <div class="container mt-3">
+    <div class="row g-3 align-items-end">
+      <div class="col-auto">
+        <label class="form-label">تاريخ الإقفال</label>
+        <input type="date" id="closeDate" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label">الوردية</label>
+        <select id="closeShift" class="form-select form-select-sm">
+          <option value="all">اليوم كله</option>
+          <option value="am">صباحي</option>
+          <option value="pm">مسائي</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button id="btnCloseReload" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-repeat"></i> تحديث</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="py-3">
+    <div class="container">
+      <div class="row g-3">
+        <!-- Cash Reconciliation -->
+        <div class="col-lg-6">
+          <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="m-0">مطابقة الخزنة</h6>
+              <span class="small text-muted" id="dataSourceHint">—</span>
+            </div>
+            <ul class="list-unstyled small mb-3">
+              <li>متوقع: <strong id="expectedCash">0</strong></li>
+              <li class="text-muted">مبيعات كاش: <span id="sumCashSales">0</span> • تحصيل كريديت: <span id="sumCreditRepayCash">0</span></li>
+              <li class="text-muted">مصروفات كاش: <span id="sumCashExpenses">0</span> • إيداعات: <span id="sumDeposits">0</span></li>
+            </ul>
+
+            <div class="row g-2 align-items-center mb-2">
+              <div class="col-6"><small>عدّ فعلي</small></div>
+              <div class="col-6 text-end"><strong id="countedCash">0</strong></div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-2">
+                <thead class="small"><tr><th>الفئة</th><th>العدد</th><th class="text-end">الإجمالي</th></tr></thead>
+                <tbody id="tblDenoms"></tbody>
+              </table>
+            </div>
+
+            <div class="row g-2 align-items-center">
+              <div class="col-auto">الفرق:</div>
+              <div class="col-auto"><strong id="diffCash">0</strong></div>
+              <div class="col"><input id="depositRef" class="form-control form-control-sm" placeholder="رقم إيصال/إيداع (اختياري)"></div>
+            </div>
+            <textarea id="closeNotes" class="form-control form-control-sm mt-2" rows="2" placeholder="ملاحظات"></textarea>
+
+            <div class="d-flex gap-2 mt-2">
+              <button id="btnSaveCount" class="btn btn-primary btn-sm"><i class="bi bi-save"></i> حفظ العدّ (محلي)</button>
+              <button id="btnSaveDeposit" class="btn btn-outline-primary btn-sm"><i class="bi bi-bank"></i> تسجيل إيداع (محلي)</button>
+              <button id="btnPrintDeposit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer"></i> طباعة</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expense Audit -->
+        <div class="col-lg-6">
+          <div class="card p-3">
+            <h6 class="mb-3">تدقيق المصروفات</h6>
+            <div class="row g-2 mb-2">
+              <div class="col"><input id="expThresholdInput" type="number" class="form-control form-control-sm" placeholder="حد إنذار (مثلاً 500)"></div>
+              <div class="col">
+                <select id="expCatFilter" class="form-select form-select-sm">
+                  <option value="">كل التصنيفات</option>
+                </select>
+              </div>
+              <div class="col-auto">
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" id="expOnlyUnapproved">
+                  <label class="form-check-label small" for="expOnlyUnapproved">غير المعتمَد فقط</label>
+                </div>
+              </div>
+              <div class="col-auto"><button id="btnApproveAll" class="btn btn-outline-primary btn-sm">اعتماد الكل</button></div>
+            </div>
+
+            <div class="table-responsive" style="max-height: 52vh; overflow:auto;">
+              <table class="table table-sm">
+                <thead class="small"><tr><th>تاريخ</th><th>تصنيف</th><th>وصف</th><th>طريقة</th><th class="text-end">مبلغ</th><th>اعتماد</th></tr></thead>
+                <tbody id="tblExpensesBody"></tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between small mt-2">
+              <div>اليوم: <strong id="totalExpensesToday">0</strong></div>
+              <div>غير معتمد: <strong id="totalUnapproved">0</strong> • معتمد: <strong id="approvedCount">0</strong></div>
+            </div>
+
+            <div class="mt-2 d-flex gap-2">
+              <button id="btnSaveExpApprovals" class="btn btn-primary btn-sm"><i class="bi bi-check2-square"></i> حفظ الاعتمادات (محلي)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="sticky-footer bg-transparent p-3">
+    <div class="container">
+      <div class="card p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div class="small">
+          <span id="statusCash" class="badge text-bg-secondary">Cash: n/a</span>
+          <span id="statusExp"  class="badge text-bg-secondary">Expenses: n/a</span>
+        </div>
+        <button id="btnFinalizeClose" class="btn btn-success btn-sm" disabled>
+          <i class="bi bi-lock"></i> Finalize Day
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/app.js"></script>
+  <script src="/js/close.js"></script>
+</body>
+</html>
