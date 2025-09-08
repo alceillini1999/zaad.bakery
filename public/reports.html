@@ -6,7 +6,7 @@
   <title>Reports — Zaad Bakery</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link id="reportThemeLink" rel="stylesheet" href="/css/reports-theme-violet-glass.css">
+  <link id="reportThemeLink" rel="stylesheet" href="/css/reports-theme-zaad-cream.css">
   <link rel="icon" href="/img/zaad-logo.jpeg">
   <style>body{font-family:system-ui,Arial,sans-serif;}</style>
 </head>
@@ -41,16 +41,20 @@
   </div>
   <div class="container mt-2">
     <div class="d-flex align-items-center gap-2">
-      <label class="form-label m-0 small text-muted">Report theme:</label>
-      <select id="reportTheme" class="form-select form-select-sm" style="max-width: 240px">
-        <option value="/css/reports-theme-violet-glass.css" selected>Soft Violet (glass)</option>
-        <option value="/css/reports-theme-classic.css">Classic Light</option>
-        <option value="/css/reports-theme-dark.css">Dark Slate</option>
+      <label class="form-label m-0 small text-muted">Theme:</label>
+      <select id="reportTheme" class="form-select form-select-sm" style="max-width: 260px">
+        <option value="/css/reports-theme-zaad-cream.css" selected>Zaad — Cream & Gold (Light)</option>
+        <option value="/css/reports-theme-zaad-caramel-glass.css">Zaad — Caramel Glass</option>
+        <option value="/css/reports-theme-zaad-dark-cocoa.css">Zaad — Dark Cocoa</option>
       </select>
+      <div class="form-check form-switch ms-2">
+        <input class="form-check-input" type="checkbox" id="wmSwitch">
+        <label class="form-check-label small" for="wmSwitch">Logo watermark</label>
+      </div>
     </div>
   </div>
 
-  <main class="py-4"><div class="container"><div class="report-page">
+  <main class="py-4"><div class="container"><div class="report-page" id="reportRoot">
     <section class="tab-pane active" 
 id="tabReports">
           <div class="card mb-4">
@@ -85,26 +89,29 @@ id="tabReports">
   <script>
     window.addEventListener('DOMContentLoaded', function(){
       try {
-        if (document.getElementById('repFrom') && !document.getElementById('repFrom').value) {
-          const d=new Date(); const pad=n=>String(n).padStart(2,'0');
-          const today=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-          document.getElementById('repFrom').value=today;
-        }
-        if (document.getElementById('repTo') && !document.getElementById('repTo').value) {
-          document.getElementById('repTo').value=document.getElementById('repFrom').value;
-        }
+        const rf=document.getElementById('repFrom'), rt=document.getElementById('repTo');
+        if (rf && !rf.value){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); const t=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; rf.value=t; }
+        if (rt && !rt.value){ rt.value=rf.value; }
       } catch(e){}
-    });
-    window.addEventListener('load', function(){
-      if (typeof window.runReport === 'function') { window.runReport().catch(()=>{}); }
       const link = document.getElementById('reportThemeLink');
       const sel  = document.getElementById('reportTheme');
-      if (link && sel) {
+      const root = document.getElementById('reportRoot');
+      const wms  = document.getElementById('wmSwitch');
+      if (link && sel){
         const saved = localStorage.getItem('zaad_report_theme');
         if (saved) { link.href = saved; sel.value = saved; }
         sel.addEventListener('change', () => { link.href = sel.value; localStorage.setItem('zaad_report_theme', sel.value); });
       }
+      if (root && wms){
+        const w = localStorage.getItem('zaad_report_wm') === '1';
+        if (w){ root.classList.add('logo-mark'); wms.checked = true; }
+        wms.addEventListener('change', ()=>{
+          root.classList.toggle('logo-mark', wms.checked);
+          localStorage.setItem('zaad_report_wm', wms.checked ? '1' : '0');
+        });
+      }
     });
+    window.addEventListener('load', function(){ if (typeof window.runReport === 'function') { window.runReport().catch(()=>{}); } });
   </script>
 </body>
 </html>
