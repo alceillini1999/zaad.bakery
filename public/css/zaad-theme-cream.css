@@ -1,0 +1,50 @@
+
+/* Zaad — Cream & Gold (Light) — Global */
+:root{
+  --zaad-bg1:#fffaf2; --zaad-bg2:#f6efe4;
+  --zaad-accent:#c89a60; --zaad-accent2:#e0b86b;
+  --zaad-text:#3b2a20; --zaad-border:rgba(200,154,96,.25);
+}
+html,body{min-height:100%;}
+body{
+  background:
+    radial-gradient(800px 400px at -10% -10%, var(--zaad-bg2) 0%, transparent 45%),
+    radial-gradient(800px 400px at 110% 10%, #fff6e8 0%, transparent 45%),
+    linear-gradient(180deg, var(--zaad-bg1) 0%, #ffffff 60%);
+  color:var(--zaad-text);
+  font-family:system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Inter", sans-serif;
+}
+.navbar.bg-white{
+  background-color:rgba(255,255,255,.85)!important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--zaad-border);
+}
+.card, .notice, .alert, .table{
+  background:rgba(255,255,255,.78);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  border:1px solid var(--zaad-border);
+  border-radius:16px;
+  box-shadow:0 12px 32px rgba(200,154,96,.10);
+}
+.table thead th{
+  background:rgba(232,205,160,.25);
+  color:#4a3527;
+  border-bottom:1px solid var(--zaad-border);
+}
+.btn-primary{
+  background:linear-gradient(90deg, var(--zaad-accent), var(--zaad-accent2));
+  border:none;
+}
+.btn-outline-primary{color:#7c5529;border-color:var(--zaad-accent)}
+.btn-outline-primary:hover{background:rgba(232,205,160,.20)}
+.nav-pills .nav-link.active{
+  background:linear-gradient(90deg, var(--zaad-accent), var(--zaad-accent2));
+  border:none;
+}
+body.logo-mark::after{
+  content:""; position:fixed; right:36px; bottom:36px; width:180px; height:180px;
+  background:url('/img/zaad-logo.jpeg') center/contain no-repeat;
+  opacity:.07; pointer-events:none; z-index:0;
+}
