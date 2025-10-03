@@ -168,28 +168,36 @@ $('#btnSalesExport')?.addEventListener('click', (e)=>{
 });
 $('#formSale')?.addEventListener('submit', async e=>{
   e.preventDefault();
-  const fd=new FormData(e.target); const body=Object.fromEntries(fd.entries());
-  body.amount = Number(body.amount||0);
-  if(!(body.amount>0)) return showToast('Enter amount', false);
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
 
-  // Show duplicate confirmation only if same amount as the last saved sale
+  // Normalize amount
+  body.amount = Number(body.amount || 0);
+  if (!(body.amount > 0)) return showToast('Enter amount', false);
+
+  // Show duplicate confirmation ONLY if same as last recorded sale (by amount)
   let sameAsLast = false;
-  try{
-    const lastAmt = parseFloat(localStorage.getItem('last:sale:amount')||'');
-    if(Number.isFinite(lastAmt)){
-      sameAsLast = Number(lastAmt).toFixed(2) === Number(body.amount||0).toFixed(2);
+  try {
+    const lastAmt = parseFloat(localStorage.getItem('last:sale:amount') || '');
+    if (Number.isFinite(lastAmt)) {
+      sameAsLast = Number(lastAmt).toFixed(2) === Number(body.amount || 0).toFixed(2);
     }
-  }catch{}
+  } catch (e) {}
 
-  if(sameAsLast){
-    if(!(await DupGuard.checkAndConfirm('sale', body))) return;
+  if (sameAsLast) {
+    const ok = await DupGuard.checkAndConfirm('sale', body);
+    if (!ok) return; // user cancelled
   }
 
-  const res=await api('/api/sales/add',{method:'POST',body:JSON.stringify(body)});
-  if(res.ok){
-    try{ localStorage.setItem('last:sale:amount', String(body.amount||0)); }catch{}
-    e.target.reset(); showToast('Sale saved'); loadSales();
-  } else showToast(res.error||'Failed',false);
+  const res = await api('/api/sales/add', { method:'POST', body: JSON.stringify(body) });
+  if (res.ok) {
+    try { localStorage.setItem('last:sale:amount', String(body.amount || 0)); } catch(e) {}
+    e.target.reset();
+    showToast('Sale saved');
+    loadSales();
+  } else {
+    showToast(res.error || 'Failed', false);
+  }
 });
 
 /* ---------- EXPENSES (مع صورة) ---------- */
