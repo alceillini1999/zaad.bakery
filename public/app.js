@@ -171,8 +171,25 @@ $('#formSale')?.addEventListener('submit', async e=>{
   const fd=new FormData(e.target); const body=Object.fromEntries(fd.entries());
   body.amount = Number(body.amount||0);
   if(!(body.amount>0)) return showToast('Enter amount', false);
-  if(!(await DupGuard.checkAndConfirm('sale', body))) return; const res=await api('/api/sales/add',{method:'POST',body:JSON.stringify(body)});
-  if(res.ok){ e.target.reset(); showToast('Sale saved'); loadSales(); } else showToast(res.error||'Failed',false);
+
+  // Show duplicate confirmation only if same amount as the last saved sale
+  let sameAsLast = false;
+  try{
+    const lastAmt = parseFloat(localStorage.getItem('last:sale:amount')||'');
+    if(Number.isFinite(lastAmt)){
+      sameAsLast = Number(lastAmt).toFixed(2) === Number(body.amount||0).toFixed(2);
+    }
+  }catch{}
+
+  if(sameAsLast){
+    if(!(await DupGuard.checkAndConfirm('sale', body))) return;
+  }
+
+  const res=await api('/api/sales/add',{method:'POST',body:JSON.stringify(body)});
+  if(res.ok){
+    try{ localStorage.setItem('last:sale:amount', String(body.amount||0)); }catch{}
+    e.target.reset(); showToast('Sale saved'); loadSales();
+  } else showToast(res.error||'Failed',false);
 });
 
 /* ---------- EXPENSES (مع صورة) ---------- */
