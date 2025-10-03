@@ -1,194 +1,213 @@
 <!doctype html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Zaad Bakery — Employees</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root { --bg:#0b1220; --card:#0f172a; --muted:#94a3b8; --acc:#22c55e; --danger:#ef4444; }
-    *{box-sizing:border-box}
-    body{font-family:"Cairo", system-ui, sans-serif; margin:0; background:var(--bg); color:#e5e7eb}
-    header{position:sticky; top:0; background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.8)); border-bottom:1px solid #1f2937; padding:12px 16px; display:flex; gap:8px; align-items:center}
-    h1{font-size:20px;margin:0;font-weight:700}
-    main{max-width:1100px; margin:24px auto; padding:0 16px; display:grid; gap:20px}
-    .card{background:var(--card); border:1px solid #1f2937; border-radius:16px; padding:16px}
-    .title{font-weight:700; font-size:18px; margin-bottom:8px}
-    .desc{color:#9ca3af; font-size:14px; margin-bottom:12px}
-    .grid{display:grid; gap:10px}
-    .grid.cols-3{grid-template-columns:repeat(3, minmax(0,1fr))}
-    .grid.cols-2{grid-template-columns:repeat(2, minmax(0,1fr))}
-    label{font-size:14px; color:#cbd5e1}
-    select,input,textarea{width:100%; background:#0b1220; color:#e5e7eb; border:1px solid #273244; border-radius:10px; padding:10px; font-family:inherit}
-    textarea{min-height:80px; resize:vertical}
-    .actions{display:flex; gap:10px; flex-wrap:wrap}
-    button{border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700}
-    .primary{background:var(--acc); color:#052e16}
-    .ghost{background:transparent; border:1px solid #334155; color:#cbd5e1}
-    .danger{background:var(--danger); color:#450a0a}
-    table{width:100%; border-collapse:collapse;}
-    th,td{padding:10px; border-bottom:1px dashed #22304a; text-align:left; font-size:14px}
-    th{color:#93c5fd; font-weight:700}
-    .muted{color:#94a3b8}
-    .tag{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #334155}
-    .tag.morning{color:#34d399; border-color:#14532d}
-    .tag.evening{color:#60a5fa; border-color:#1e3a8a}
-  
-    /* unified top navbar */
-    .zb-nav{position:sticky; top:0; z-index:50; background:#faf7f1; border-bottom:1px solid var(--border)}
-    .zb-nav .nav-wrap{max-width:1100px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; gap:14px; justify-content:space-between}
-    .zb-nav .brand{display:flex; align-items:center; gap:10px; font-weight:800; color:var(--text)}
-    .zb-nav .links{display:flex; gap:14px; flex-wrap:wrap}
-    .zb-nav .links a{color:var(--text); text-decoration:none; padding:6px 10px; border-radius:8px}
-    .zb-nav .links a.active, .zb-nav .links a:hover{background:#fff; border:1px solid var(--border)}
-    .zb-nav .actions{display:flex; align-items:center; gap:10px}
-    .btn.small{padding:6px 10px; border-radius:8px; font-weight:700}
-    .switch.small{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted)}
-    .switch.small input{accent-color:#111}
-</style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="/style.css" rel="stylesheet">
+  <link href="/css/zaad-theme-cream.css" rel="stylesheet">
+  <link rel="icon" href="/img/zaad-logo.jpeg">
 </head>
 <body>
-  
-  <header class="zb-nav">
-    <div class="nav-wrap">
-      <div class="brand">
-        <img src="assets/logo.png" alt="Zaad Bakery" onerror="this.style.display='none'">
-        <span>Zaad Bakery</span>
-      </div>
-      <nav class="links">
-        <a href="index.html">Sales</a>
-        <a href="expenses.html">Expenses</a>
-        <a href="credit.html">Credit</a>
-        <a href="orders.html">Orders</a>
-        <a href="cash.html">Cash</a>
-        <a href="employees.html" class="active">Employees</a>
-        <a href="reports.html">Reports</a>
-      </nav>
-      <div class="actions">
-        <a class="btn small ghost" href="invoices.html">Invoices</a>
-        <button id="shareBtn" class="btn small ghost" type="button">Share</button>
-        <label class="switch small">
-          <input type="checkbox" id="darkToggle" />
-          <span>Dark</span>
-        </label>
+  <!-- unified navbar (same as index.html) -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <img src="/img/zaad-logo.jpeg" alt="Zaad" width="36" height="36" class="rounded">
+        <span class="fw-bold">Zaad Bakery</span>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
+        <a href="/invoice.html" class="btn btn-sm btn-outline-dark"><i class="bi bi-receipt"></i> Invoices</a>
+        <button id="btnShare" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code"></i> Share</button>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="themeSwitch">
+          <label class="form-check-label small" for="themeSwitch">Dark</label>
+        </div>
       </div>
     </div>
-  </header>
+  </nav>
 
-  <main>
-    <!-- Part 1: Attendance -->
-    <section class="card">
-      <div class="title">Part 1: Attendance</div>
-      <div class="desc">Pick the employee, choose the session (Morning/Evening), then enter the time. The table below shows the selected day. Overtime is calculated automatically when both check‑in and check‑out exist for the same day.</div>
+  <!-- unified nav pills -->
+  <div class="container mt-3">
+    <ul class="nav nav-pills gap-2 flex-wrap" id="pageNav">
+      <li class="nav-item"><a class="nav-link" href="/index.html"><i class="bi bi-cash-coin"></i> Sales</a></li>
+      <li class="nav-item"><a class="nav-link" href="/expenses.html"><i class="bi bi-receipt"></i> Expenses</a></li>
+      <li class="nav-item"><a class="nav-link" href="/credit.html"><i class="bi bi-people"></i> Credit</a></li>
+      <li class="nav-item"><a class="nav-link" href="/orders.html"><i class="bi bi-bag-check"></i> Orders</a></li>
+      <li class="nav-item"><a class="nav-link" href="/cash.html"><i class="bi bi-cash-stack"></i> Cash</a></li>
+      <li class="nav-item"><a class="nav-link active" href="/employees.html"><i class="bi bi-person-badge"></i> Employees</a></li>
+      <li class="nav-item"><a class="nav-link" href="/reports.html"><i class="bi bi-graph-up"></i> Reports</a></li>
+      <li class="nav-item ms-auto"><a class="nav-link" href="/invoice.html"><i class="bi bi-receipt"></i> Invoices</a></li>
+    </ul>
+  </div>
 
-      <div class="grid cols-3">
-        <div>
-          <label>Employee</label>
-          <select id="att-employee"></select>
+  <main class="py-4">
+    <div class="container">
+      <div class="row g-4">
+        <!-- Column 1: Employees master and Attendance form -->
+        <div class="col-lg-6">
+          <!-- Employees Master -->
+          <div class="card mb-4">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-people"></i> Employees</div>
+            <div class="card-body">
+              <form id="formEmployee" class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Name</label>
+                  <input class="form-control" name="name" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Phone</label>
+                  <input class="form-control" name="phone">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Note</label>
+                  <input class="form-control" name="note" placeholder="Optional">
+                </div>
+                <div class="col-12 d-grid">
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Employee</button>
+                </div>
+              </form>
+
+              <div class="table-responsive mt-3">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>Name</th><th>Phone</th><th>Note</th></tr>
+                  </thead>
+                  <tbody id="tblEmployeesBody"><tr><td colspan="3" class="text-secondary p-3">No data.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance -->
+          <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-calendar2-check"></i> Attendance</div>
+            <div class="card-body">
+              <form id="formAttendance" class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Employee</label>
+                  <select class="form-select" id="attEmployee" name="employee" required></select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Action</label>
+                  <select class="form-select" name="action" required>
+                    <option value="check_in">Check-in</option>
+                    <option value="check_out">Check-out</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Time</label>
+                  <input class="form-control" type="datetime-local" name="time">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Note</label>
+                  <input class="form-control" name="note" placeholder="Optional">
+                </div>
+                <div class="col-12 d-grid">
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Attendance</button>
+                </div>
+              </form>
+
+              <div class="table-responsive mt-3">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>Date/Time</th><th>Employee</th><th>Action</th><th>Note</th></tr>
+                  </thead>
+                  <tbody id="tblAttendanceBody"><tr><td colspan="4" class="text-secondary p-3">No data.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-        <div>
-          <label>Session</label>
-          <select id="att-session">
-            <option value="morning">Morning</option>
-            <option value="evening">Evening</option>
-          </select>
-        </div>
-        <div>
-          <label>Time</label>
-          <input type="time" id="att-time" />
+
+        <!-- Column 2: Purchases & Advances and Mixed log -->
+        <div class="col-lg-6">
+          <!-- Employee Purchases -->
+          <div class="card mb-4">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-bag"></i> Employee Purchases</div>
+            <div class="card-body">
+              <form id="formEmpPurchase" class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Employee</label>
+                  <select class="form-select" id="purEmployee" name="employee" required></select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Amount (KSh)</label>
+                  <input class="form-control" name="amount" type="number" min="0" step="0.01" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Note</label>
+                  <input class="form-control" name="note" placeholder="Optional">
+                </div>
+                <div class="col-12 d-grid">
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Purchase</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Employee Advances -->
+          <div class="card mb-4">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-currency-exchange"></i> Employee Advances</div>
+            <div class="card-body">
+              <form id="formEmpAdvance" class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Employee</label>
+                  <select class="form-select" id="advEmployee" name="employee" required></select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Amount (KSh)</label>
+                  <input class="form-control" name="amount" type="number" min="0" step="0.01" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Note</label>
+                  <input class="form-control" name="note" placeholder="Optional">
+                </div>
+                <div class="col-12 d-grid">
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Advance</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Mixed Log -->
+          <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-list-check"></i> Employee Purchases & Advances (Today)</div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>Date</th><th>Type</th><th>Employee</th><th class="text-end">Amount</th><th>Note</th></tr>
+                  </thead>
+                  <tbody id="tblEmpTransBody"><tr><td colspan="5" class="text-secondary p-3">No data.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-
-      <div class="actions" style="margin-top:12px">
-        <button class="primary" id="btn-save-att">Save Attendance</button>
-        <button class="ghost" id="btn-refresh-att">Refresh Log</button>
-      </div>
-
-      <div class="grid cols-2" style="margin-top:12px">
-        <div>
-          <label>Displayed day</label>
-          <input type="date" id="att-date" />
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button class="ghost" id="btn-today">Today</button>
-        </div>
-      </div>
-
-      <div class="muted" style="margin-top:6px">
-        Overtime = (Check‑out − Check‑in) − 8 hours (this base can be changed on the server).
-      </div>
-
-      <h3 style="margin:16px 0 8px">Day log</h3>
-      <table id="tbl-att">
-        <thead>
-          <tr>
-            <th>Employee</th>
-            <th>Session</th>
-            <th>Check‑in</th>
-            <th>Check‑out</th>
-            <th>Overtime (min)</th>
-            <th>Last update</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <!-- Part 2: Advances -->
-    <section class="card">
-      <div class="title">Part 2: Advances</div>
-      <div class="desc">Record cash advances taken by employees, with a note.</div>
-
-      <div class="grid cols-3">
-        <div>
-          <label>Employee</label>
-          <select id="adv-employee"></select>
-        </div>
-        <div>
-          <label>Advance amount (KSh)</label>
-          <input type="number" id="adv-amount" min="0" step="1" placeholder="0" />
-        </div>
-        <div>
-          <label>Note</label>
-          <input type="text" id="adv-note" placeholder="Reason (optional)" />
-        </div>
-      </div>
-
-      <div class="actions" style="margin-top:12px">
-        <button class="primary" id="btn-save-adv">Save Advance</button>
-        <button class="ghost" id="btn-refresh-adv">Refresh Advances</button>
-      </div>
-
-      <div class="grid cols-2" style="margin-top:12px">
-        <div>
-          <label>Displayed day</label>
-          <input type="date" id="adv-date" />
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button class="ghost" id="btn-adv-today">Today</button>
-        </div>
-      </div>
-
-      <h3 style="margin:16px 0 8px">Advances (day)</h3>
-      <table id="tbl-adv">
-        <thead>
-          <tr>
-            <th>Employee</th>
-            <th>Amount</th>
-            <th>Note</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    </div>
   </main>
 
-  <!-- Place this as public/employees.html and the script as public/js/employees.js (or rename to .en.js accordingly) -->
-  <script src="/js/employees.en.js"></script>
+  <!-- Toast (reuse same container/id as index for app.js) -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+    <div id="appToast" class="toast text-bg-success align-items-center border-0" role="alert" aria-live="polite" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/app.js"></script>
+  <script src="/js/boot-mpa.js"></script>
 </body>
 </html>
