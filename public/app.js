@@ -1,10 +1,3 @@
-بالتأكيد، لقد استلمت الكود وقمت بإجراء التعديل المطلوب.
-
-لقد قمت بتعطيل النافذة المنبثقة "تأكيد التكرار" التي تظهر عند تسجيل المبيعات. الآن، سيتم حفظ البيعة مباشرة دون أي تأكيد.
-
-**إليك محتوى ملف `app.js` الكامل بعد التعديل. يرجى نسخه بالكامل واستبدال محتوى الملف القديم به:**
-
-```javascript
 /* Zaad Bakery Pro Frontend */
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -192,7 +185,7 @@ $('#formSale')?.addEventListener('submit', async e=>{
   const fd=new FormData(e.target); const body=Object.fromEntries(fd.entries());
   body.amount = Number(body.amount||0);
   if(!(body.amount>0)) return showToast('Enter amount', false);
-  // if(!(await DupGuard.checkAndConfirm('sale', body))) return; // <--- THIS LINE IS NOW DISABLED
+  // if(!(await DupGuard.checkAndConfirm('sale', body))) return;
   const res=await api('/api/sales/add',{method:'POST',body:JSON.stringify(body)});
   if(res.ok){ e.target.reset(); showToast('Sale saved'); loadSales(); } else showToast(res.error||'Failed',false);
 });
@@ -294,7 +287,7 @@ async function loadCredit(){
 $('#formCredit')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
- 
+  
   if(!(await DupGuard.checkAndConfirm('credit', body))) return;
 const res=await api('/api/credits/add',{method:'POST',body:JSON.stringify(body)});
   if(res.ok){ e.target.reset(); showToast('Credit saved'); loadCredit(); } else showToast(res.error||'Failed',false);
@@ -302,7 +295,7 @@ const res=await api('/api/credits/add',{method:'POST',body:JSON.stringify(body)}
 $('#formPay')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
- 
+  
   { const _amt = body.paid?? body.amount?? body.value; const _forSig = {customer: body.customer, paid: _amt, method: body.method, date: body.date||today()};
     if(!(await DupGuard.checkAndConfirm('creditPay', _forSig))) return;
   }
@@ -379,7 +372,7 @@ $('#orStatusFilter')?.addEventListener('change', loadOrders);
 $('#formOrder')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const body=Object.fromEntries(new FormData(e.target).entries());
- 
+  
   if(!(await DupGuard.checkAndConfirm('order', body))) return;
 const res=await api('/api/orders/add',{method:'POST',body:JSON.stringify(body)});
   if(res.ok){ e.target.reset(); showToast('Order saved'); loadOrders(); } else showToast(res.error||'Failed',false);
@@ -389,7 +382,7 @@ const res=await api('/api/orders/add',{method:'POST',body:JSON.stringify(body)})
 $('#formOrderPay')?.addEventListener('submit', async e=>{
   e.preventDefault();
   const id=$('#opId').value, remain=parseFloat($('#opRemaining').value||'0'), amount=parseFloat($('#opAmount').value||'0');
- 
+  
   { const _forSig = { id, amount, method: $('#opMethod').value };
     if(!(await DupGuard.checkAndConfirm('orderPay', _forSig))) return;
   }
@@ -747,4 +740,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $('#manualOut')?.addEventListener('input', updateCashTotalManual);
   toggleCashMode();
 });
-```
